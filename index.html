@@ -3,2885 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Code Origin.Ai | Ultra Realistic Human Avatar - Cinematic AAA Quality</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <title>AI Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; font-family: 'Rajdhani', sans-serif; background: #020510; }
-        .triple-layout { display: flex; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; z-index: 2; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --glass: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-primary: rgba(255, 255, 255, 0.92);
+            --text-secondary: rgba(255, 255, 255, 0.55);
+            --text-muted: rgba(255, 255, 255, 0.3);
+            --accent: rgba(139, 92, 246, 0.8);
+            --accent-glow: rgba(139, 92, 246, 0.15);
+            --success: rgba(74, 222, 128, 0.8);
+            --radius: 16px;
+        }
 
 
-        .info-panel { width: 380px; height: 100vh; background: rgba(5, 12, 30, 0.88); backdrop-filter: blur(16px); border-right: 1px solid rgba(0, 200, 255, 0.3); display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: thin; z-index: 20; }
-        .info-panel::-webkit-scrollbar { width: 6px; }
-        .info-panel::-webkit-scrollbar-track { background: #0a1a2f; }
-        .info-panel::-webkit-scrollbar-thumb { background: #00c8ff; border-radius: 10px; }
-        .camera-panel { width: 400px; height: 100vh; background: rgba(0, 0, 0, 0.6); border-right: 1px solid rgba(0, 200, 255, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; backdrop-filter: blur(8px); z-index: 15; }
-        .camera-container { width: 90%; aspect-ratio: 4 / 3; background: #000; border-radius: 8px; border: 2px solid #00c8ff; overflow: hidden; position: relative; }
-        #cameraFeed { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .detection-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; transform: scaleX(-1); }
-        .camera-overlay { position: absolute; bottom: 15px; left: 0; right: 0; text-align: center; font-family: 'Orbitron', sans-serif; font-size: 0.7rem; color: #00c8ff; background: rgba(0,0,0,0.6); padding: 5px; width: fit-content; margin: 0 auto; border-radius: 4px; pointer-events: none; z-index: 2; }
-        .camera-status { margin-top: 12px; font-size: 0.7rem; font-family: 'Orbitron', sans-serif; color: #00c8ff88; letter-spacing: 2px; }
-        .person-indicator { margin-top: 8px; font-size: 0.65rem; font-family: 'Orbitron', sans-serif; padding: 6px 14px; border-radius: 20px; background: rgba(0,0,0,0.7); transition: all 0.3s ease; text-align: center; }
-        .person-indicator.detected { color: #00ffaa; border: 1px solid #00ffaa; box-shadow: 0 0 10px #00ffaa33; background: rgba(0,255,170,0.1); }
-        .person-indicator.not-detected { color: #ff6680; border: 1px solid #ff6680; }
-        .person-indicator.active { color: #ffcc00; border-color: #ffcc00; box-shadow: 0 0 12px #ffcc0044; background: rgba(255,204,0,0.1); }
-        .avatar-panel { flex: 1; position: relative; background: #020510; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        body {
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ============ FULLSCREEN LAYOUT ============ */
+        .app-container {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Ambient background gradient */
+        .ambient-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 30%, rgba(139,92,246,0.06) 0%, transparent 60%),
+                        radial-gradient(ellipse at 30% 70%, rgba(59,130,246,0.04) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(168,85,247,0.03) 0%, transparent 50%);
+            animation: ambientPulse 8s ease-in-out infinite alternate;
+        }
+        @keyframes ambientPulse {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* ============ AVATAR AREA ============ */
+        .avatar-area {
+            position: relative;
+            z-index: 10;
+        }
+
+        #avatarCanvas {
+            display: block;
+            border-radius: 24px;
+            max-height: 85vh;
+            width: auto;
+            filter: drop-shadow(0 0 60px rgba(139,92,246,0.08));
+        }
 
 
-        .status-badge { background: rgba(0,200,255,0.07); border: 1px solid rgba(0,200,255,0.25); border-radius: 2px; padding: 4px 14px; font-size: 0.65rem; font-weight: 600; letter-spacing: 2px; width: fit-content; margin-bottom: 16px; color: #00c8ff; font-family: 'Orbitron', sans-serif; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .led-dot { width: 6px; height: 6px; background: #00ffaa; border-radius: 50%; box-shadow: 0 0 6px #00ffaa; animation: pulseGreen 1.5s infinite; }
-        .led-dot.active { background: #ff3366; box-shadow: 0 0 10px #ff3366; animation: pulseRed 0.8s infinite; }
-        @keyframes pulseGreen { 0%,100%{opacity:0.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)} }
-        @keyframes pulseRed { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.4)} }
-        .section-label { font-size: 0.6rem; text-transform: uppercase; font-weight: 700; letter-spacing: 3px; color: #0066ff; margin-bottom: 7px; font-family: 'Orbitron', sans-serif; }
-        .user-message { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 2px; padding: 10px 16px; color: #a0c4ff; font-size: 0.85rem; margin-bottom: 16px; word-break: break-word; min-height: 60px; }
-        .ai-message { background: rgba(0, 100, 255, 0.07); border-radius: 2px; padding: 14px 18px; color: #e0f4ff; line-height: 1.6; font-size: 0.85rem; border: 1px solid rgba(0, 200, 255, 0.2); min-height: 80px; max-height: 150px; overflow-y: auto; }
-        .cursor-blink { display: inline-block; width: 2px; height: 1em; background: #00c8ff; margin-left: 3px; vertical-align: middle; animation: blinkAnim 0.9s step-end infinite; }
-        @keyframes blinkAnim { 0%,100%{opacity:1} 50%{opacity:0} }
-        .volume-meter { display: flex; align-items: center; gap: 10px; margin-top: 16px; margin-bottom: 20px; }
-        .volume-bar { width: 130px; height: 3px; background: rgba(0,200,255,0.1); border-radius: 10px; overflow: hidden; }
-        .volume-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #00ffaa, #00c8ff); border-radius: 10px; transition: width 0.02s linear; }
-        .chat-log-container { max-height: 260px; overflow-y: auto; margin-bottom: 16px; padding-right: 8px; scrollbar-width: thin; }
-        .chat-entry { margin-bottom: 12px; padding: 8px 0; border-bottom: 1px solid rgba(0,200,255,0.15); font-size: 0.75rem; }
-        .chat-user-label { color: #88aaff; font-weight: 600; letter-spacing: 0.5px; }
-        .chat-text { color: #e0f4ff; margin-top: 4px; line-height: 1.4; word-break: break-word; }
-        .chat-time { font-size: 0.55rem; color: #00c8ff66; margin-left: 8px; }
-        .panel-content { padding: 24px 20px; flex: 1; }
+        /* ============ BOTTOM CONTROLS BAR ============ */
+        .controls-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px 32px 28px;
+            background: linear-gradient(to top, rgba(10,10,15,0.95) 0%, rgba(10,10,15,0.7) 60%, transparent 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        /* Waveform */
+        .waveform {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            height: 32px;
+            padding: 0 16px;
+        }
+        .waveform-bar {
+            width: 3px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: height 0.05s ease;
+        }
+
+        /* Mic button */
+        .mic-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 24px rgba(139,92,246,0.3);
+            position: relative;
+        }
+        .mic-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 6px 32px rgba(139,92,246,0.5);
+        }
+        .mic-btn:active { transform: scale(0.95); }
+        .mic-btn svg { width: 22px; height: 22px; fill: white; }
+        .mic-btn.active {
+            animation: micPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes micPulse {
+            0%, 100% { box-shadow: 0 4px 24px rgba(139,92,246,0.3); }
+            50% { box-shadow: 0 4px 40px rgba(139,92,246,0.6); }
+        }
+
+        /* Subtitle */
+        .subtitle-area {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 90;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+        #subtitle {
+            font-size: 0.95rem;
+            font-weight: 400;
+            color: var(--text-primary);
+            line-height: 1.6;
+            background: rgba(10,10,15,0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 12px 24px;
+            min-height: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #subtitle:not(:empty) { opacity: 1; }
 
 
-        .avatar-label { position: fixed; bottom: 20px; right: 28px; z-index: 25; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1rem; color: #00c8ff66; background: rgba(0,0,0,0.4); padding: 6px 16px; border-radius: 2px; backdrop-filter: blur(8px); pointer-events: none; }
-        .stats-footer { position: fixed; top: 22px; right: 28px; z-index: 25; background: rgba(0,0,0,0.5); backdrop-filter: blur(12px); padding: 5px 16px; border-radius: 2px; font-size: 0.65rem; font-family: 'Orbitron', sans-serif; color: #00c8ff66; border: 1px solid rgba(0,200,255,0.15); pointer-events: none; }
-        .corner-bracket { position: fixed; width: 32px; height: 32px; border-color: #00c8ff44; border-style: solid; pointer-events: none; z-index: 15; }
-        .corner-tl { top: 18px; left: 18px; border-width: 2px 0 0 2px; }
-        .corner-tr { top: 18px; right: 18px; border-width: 2px 2px 0 0; }
-        .corner-bl { bottom: 18px; left: 18px; border-width: 0 0 2px 2px; }
-        .corner-br { bottom: 18px; right: 18px; border-width: 0 2px 2px 0; }
-        .auto-badge { background: #00ffaa22; border: 1px solid #00ffaa; color: #00ffaa; padding: 4px 8px; border-radius: 4px; font-size: 0.6rem; font-family: 'Orbitron', sans-serif; margin-left: 8px; }
-        .voice-indicator { background: #ff00aa22; border: 1px solid #ff00aa; color: #ff88cc; padding: 3px 8px; border-radius: 12px; font-size: 0.55rem; margin-left: 8px; animation: pulseVoice 1s infinite; cursor: pointer; }
-        @keyframes pulseVoice { 0% { opacity: 0.5; } 100% { opacity: 1; } }
-        .mic-button { background: #00c8ff22; border: 1px solid #00c8ff; color: #00c8ff; padding: 4px 12px; border-radius: 20px; font-size: 0.55rem; margin-left: 8px; cursor: pointer; transition: all 0.2s; }
-        .mic-button:hover { background: #00c8ff44; }
-        .command-highlight { background: #ff336622; border: 1px solid #ff3366; border-radius: 4px; padding: 2px 6px; margin: 0 2px; font-weight: bold; }
-        #avatarCanvas2d { border-radius: 16px; border: 1.5px solid rgba(0,200,255,0.35); box-shadow: 0 0 48px rgba(0,200,255,0.15), 0 0 120px rgba(0,100,255,0.08); display: block; max-height: 90vh; width: auto; }
-        .avatar2d-status { position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; font-family: 'Orbitron', sans-serif; color: #00c8ff88; background: rgba(0,0,0,0.55); padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(0,200,255,0.2); white-space: nowrap; pointer-events: none; z-index: 5; }
-        .emotion-display { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; font-family: 'Orbitron', sans-serif; color: #ffcc00aa; background: rgba(0,0,0,0.5); padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(255,204,0,0.2); pointer-events: none; z-index: 5; transition: all 0.3s ease; }
-        .facs-display { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); font-size: 0.5rem; font-family: 'Orbitron', sans-serif; color: #00ffaa88; background: rgba(0,0,0,0.4); padding: 3px 10px; border-radius: 8px; pointer-events: none; z-index: 5; }
-        @media (max-width: 1100px) { .info-panel { width: 320px; } .camera-panel { width: 340px; } }
-        @media (max-width: 900px) { .triple-layout { flex-direction: column; } .info-panel, .camera-panel, .avatar-panel { width: 100%; height: 33.33vh; } }
-        #loading-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(ellipse at 40% 30%, #050c20, #010108); z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.8s ease; }
-        .loader-spinner { width:64px; height:64px; border:3px solid rgba(0,200,255,0.15); border-top:3px solid #00c8ff; border-radius:50%; animation: spin 0.8s linear infinite; }
+        /* ============ STATUS INDICATOR (minimal) ============ */
+        .status-pill {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        .status-pill.active .status-dot {
+            background: var(--success);
+            box-shadow: 0 0 8px rgba(74,222,128,0.5);
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+        @keyframes dotPulse {
+            0%, 100% { opacity: 0.7; } 50% { opacity: 1; }
+        }
+
+        /* ============ HIDDEN CAMERA (for detection) ============ */
+        .hidden-camera {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 120px;
+            height: 90px;
+            border-radius: 12px;
+            overflow: hidden;
+            opacity: 0.15;
+            z-index: 50;
+            transition: opacity 0.3s ease;
+            border: 1px solid var(--glass-border);
+        }
+        .hidden-camera:hover { opacity: 0.6; }
+        .hidden-camera video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+
+        /* ============ LOADING SCREEN ============ */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-primary);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 0.6s ease;
+        }
+        .loader-ring {
+            width: 48px;
+            height: 48px;
+            border: 2px solid rgba(139,92,246,0.15);
+            border-top: 2px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .model-load-status { font-size: 0.7rem; color: #00c8ffaa; margin-top: 12px; }
+        .loader-text {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+        }
+        .loader-sub {
+            margin-top: 6px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 768px) {
+            #avatarCanvas { max-height: 70vh; }
+            .controls-bar { padding: 16px 20px 24px; }
+            .subtitle-area { bottom: 90px; }
+            .hidden-camera { width: 80px; height: 60px; }
+        }
     </style>
 </head>
 <body>
 
+<!-- Loading -->
+<div id="loading-screen">
+    <div class="loader-ring"></div>
+    <div class="loader-text">Initializing</div>
+    <div class="loader-sub">Cinematic AI Assistant</div>
+</div>
 
-
-<div class="triple-layout">
-    <div class="info-panel">
-        <div class="panel-content">
-            <div class="status-badge"><span class="led-dot" id="statusLed"></span> <span id="statusMsg">INITIALIZING</span><span class="auto-badge">FULL AUTO</span><span class="voice-indicator" id="voiceIndicator">MIC VOICE READY</span><button class="mic-button" id="micRestartBtn">REINIT MIC</button></div>
-            <div class="section-label">CONVERSATION LOG</div>
-            <div class="chat-log-container" id="chatLog">
-                <div class="chat-entry"><span class="chat-user-label">BOTX:</span><span class="chat-time">now</span><div class="chat-text">System online. Voice commands: <span class="command-highlight">STOP</span> <span class="command-highlight">END</span> <span class="command-highlight">RESTART</span>. Click mic button if no response.</div></div>
-            </div>
-            <div class="section-label">USER INPUT (VOICE DETECTED)</div>
-            <div class="user-message" id="userMsg">--</div>
-            <div class="section-label">BOTX RESPONSE (VOICE + TEXT)</div>
-            <div class="ai-message" id="aiMsg">Waiting for person detection...<span class="cursor-blink"></span></div>
-            <div class="volume-meter"><svg width="14" height="14" viewBox="0 0 24 24" fill="#00c8ff"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
-                <div class="volume-bar"><div class="volume-fill" id="volFill"></div></div>
-                <span style="font-size:0.65rem; color:#00c8ff66;">VOICE OUTPUT</span>
-            </div>
-        </div>
-    </div>
-    <div class="camera-panel">
-        <div class="camera-container">
-            <video id="cameraFeed" autoplay playsinline muted></video>
-            <canvas id="detectionCanvas" class="detection-canvas"></canvas>
-            <div class="camera-overlay">AUTO PERSON DETECTION + FACEMESH</div>
-        </div>
-        <div class="camera-status" id="cameraStatus">REQUESTING PERMISSION...</div>
-        <div class="person-indicator not-detected" id="personIndicator">NO PERSON DETECTED</div>
-    </div>
-    <div class="avatar-panel">
-        <div id="canvas-container">
-            <canvas id="avatarCanvas2d" width="520" height="700"></canvas>
-        </div>
-        <div class="emotion-display" id="emotionDisplay">EMOTION: NEUTRAL</div>
-        <div class="facs-display" id="facsDisplay">FACS: AU0</div>
-        <div class="avatar2d-status" id="avatar2dStatus">AVATAR READY</div>
+<!-- App -->
+<div class="app-container">
+    <div class="ambient-bg"></div>
+    <div class="avatar-area">
+        <canvas id="avatarCanvas" width="520" height="700"></canvas>
     </div>
 </div>
-<div class="corner-bracket corner-tl"></div><div class="corner-bracket corner-tr"></div>
-<div class="corner-bracket corner-bl"></div><div class="corner-bracket corner-br"></div>
-<div class="avatar-label">ULTRA REALISTIC HUMAN AVATAR - CINEMATIC AAA</div>
-<div class="stats-footer" id="stats">FACS + MEDIAPIPE + AUDIO-DRIVEN LIPSYNC | SAY: STOP - END - RESTART</div>
-<div id="loading-screen"><div class="loader-spinner"></div><div style="font-family:'Orbitron',sans-serif; font-size:1.3rem; color:#00c8ff; margin-top:20px;">ULTRA REALISTIC HUMAN AVATAR</div><div style="color:#4a7a9b; font-size:0.75rem;">CINEMATIC AAA QUALITY - FACS RIGGING - AUDIO LIP SYNC</div><div style="width:280px; height:2px; background:rgba(0,200,255,0.15); margin-top:28px;"><div id="loadFill" style="width:0%; height:100%; background:linear-gradient(90deg,#00c8ff,#0066ff);"></div></div><div id="loadPercent" style="color:#00c8ff88; margin-top:10px;">0%</div><div id="modelLoadStatus" class="model-load-status">Building Ultra Realistic Avatar with Audio-Driven Engine...</div></div>
 
-
-
-<!-- ==================== ULTRA REALISTIC AVATAR ENGINE v3.0 - ENHANCED ==================== -->
-<script>
-'use strict';
-(function(){
-/* ===================================================================
-   SYSTEM 1: REAL-TIME AUDIO-DRIVEN LIP SYNC ENGINE (ENHANCED)
-   Improved coarticulation, formant tracking, micro-movements
-   =================================================================== */
-const AudioLipSync = {
-    audioContext: null, analyser: null, sourceNode: null, gainNode: null,
-    fftSize: 2048, frequencyData: null, timeDomainData: null,
-    rmsLevel: 0, rmsSmoothed: 0, rmsPeak: 0,
-    rmsHistory: new Float32Array(64), rmsHistoryIdx: 0,
-    bands: { sub: 0, low: 0, mid: 0, high: 0, presence: 0, brilliance: 0 },
-    bandsSmoothed: { sub: 0, low: 0, mid: 0, high: 0, presence: 0, brilliance: 0 },
-    audioViseme: { jaw: 0, lipU: 0, lipL: 0, wide: 0, round: 0, tongue: 0, teeth: 0 },
-    audioVisemeTarget: { jaw: 0, lipU: 0, lipL: 0, wide: 0, round: 0, tongue: 0, teeth: 0 },
-    vowelEnergy: 0, consonantEnergy: 0, fricativeEnergy: 0,
-    plosiveDetected: false, plosiveCooldown: 0,
-    breathDetected: false, breathIntensity: 0, breathPhase: 0,
-    speechState: 'silent',
-    speechOnsetTime: 0, speechEndTime: 0,
-    silenceDuration: 0, speechDuration: 0, pauseThreshold: 150,
-    jawPosition: 0, jawVelocity: 0, jawAcceleration: 0,
-    jawMass: 1.2, jawSpring: 0.18, jawDamping: 0.72,
-    anticipationActive: false, anticipationProgress: 0, anticipationDuration: 80,
-    recoveryActive: false, recoveryProgress: 0, recoveryDuration: 200,
-    emotionalIntensity: 0, speechEmphasis: 0, pitchEstimate: 0,
-    isActive: false, isMonitoring: false,
-    // ENHANCED: Formant tracking for better vowel detection
-    formant1: 0, formant2: 0, formantSmooth1: 0, formantSmooth2: 0,
-    // ENHANCED: Lip corner micro-movements
-    lipCornerL: 0, lipCornerR: 0, lipCornerTargetL: 0, lipCornerTargetR: 0,
-    // ENHANCED: Stress/emphasis detection
-    stressLevel: 0, stressHistory: new Float32Array(16), stressIdx: 0,
-};
-
-
-function initAudioAnalyser() {
-    if (AudioLipSync.audioContext) return;
-    try {
-        AudioLipSync.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        AudioLipSync.analyser = AudioLipSync.audioContext.createAnalyser();
-        AudioLipSync.analyser.fftSize = AudioLipSync.fftSize;
-        AudioLipSync.analyser.smoothingTimeConstant = 0.4;
-        AudioLipSync.analyser.minDecibels = -90;
-        AudioLipSync.analyser.maxDecibels = -10;
-        AudioLipSync.frequencyData = new Uint8Array(AudioLipSync.analyser.frequencyBinCount);
-        AudioLipSync.timeDomainData = new Uint8Array(AudioLipSync.analyser.fftSize);
-        AudioLipSync.gainNode = AudioLipSync.audioContext.createGain();
-        AudioLipSync.gainNode.gain.value = 1.0;
-    } catch(e) { console.warn('[AudioLipSync] Failed to init:', e); }
-}
-
-function connectSpeechToAnalyser() {
-    if (!AudioLipSync.audioContext || !AudioLipSync.analyser) return;
-    try {
-        const dest = AudioLipSync.audioContext.createMediaStreamDestination();
-        AudioLipSync.analyser.connect(dest);
-        AudioLipSync.isMonitoring = true;
-    } catch(e) {}
-}
-
-function calculateRMS() {
-    if (!AudioLipSync.timeDomainData) return 0;
-    AudioLipSync.analyser.getByteTimeDomainData(AudioLipSync.timeDomainData);
-    let sumSquares = 0;
-    const data = AudioLipSync.timeDomainData;
-    for (let i = 0; i < data.length; i++) {
-        const normalized = (data[i] - 128) / 128;
-        sumSquares += normalized * normalized;
-    }
-    return Math.sqrt(sumSquares / data.length);
-}
-
-function extractFrequencyBands() {
-    if (!AudioLipSync.frequencyData || !AudioLipSync.analyser) return;
-    AudioLipSync.analyser.getByteFrequencyData(AudioLipSync.frequencyData);
-    const binCount = AudioLipSync.frequencyData.length;
-    const sampleRate = AudioLipSync.audioContext.sampleRate;
-    const binWidth = sampleRate / AudioLipSync.fftSize;
-    let sub = 0, low = 0, mid = 0, high = 0, presence = 0, brilliance = 0;
-    let subCount = 0, lowCount = 0, midCount = 0, highCount = 0, presCount = 0, brillCount = 0;
-    for (let i = 0; i < binCount; i++) {
-        const freq = i * binWidth;
-        const val = AudioLipSync.frequencyData[i] / 255;
-        if (freq < 200) { sub += val; subCount++; }
-        else if (freq < 500) { low += val; lowCount++; }
-        else if (freq < 2000) { mid += val; midCount++; }
-        else if (freq < 4000) { high += val; highCount++; }
-        else if (freq < 6000) { presence += val; presCount++; }
-        else if (freq < 12000) { brilliance += val; brillCount++; }
-    }
-    AudioLipSync.bands.sub = subCount > 0 ? sub / subCount : 0;
-    AudioLipSync.bands.low = lowCount > 0 ? low / lowCount : 0;
-    AudioLipSync.bands.mid = midCount > 0 ? mid / midCount : 0;
-    AudioLipSync.bands.high = highCount > 0 ? high / highCount : 0;
-    AudioLipSync.bands.presence = presCount > 0 ? presence / presCount : 0;
-    AudioLipSync.bands.brilliance = brillCount > 0 ? brilliance / brillCount : 0;
-}
-
-
-function detectPhonemeType() {
-    const b = AudioLipSync.bandsSmoothed;
-    AudioLipSync.vowelEnergy = (b.low * 0.4 + b.mid * 0.5 + b.sub * 0.1) * 2.0;
-    AudioLipSync.fricativeEnergy = (b.presence * 0.5 + b.brilliance * 0.5) * 2.5;
-    AudioLipSync.consonantEnergy = clamp((b.mid * 0.3 + b.high * 0.5) - b.low * 0.3, 0, 1) * 2.0;
-    const currentRMS = AudioLipSync.rmsLevel;
-    const prevRMS = AudioLipSync.rmsHistory[(AudioLipSync.rmsHistoryIdx - 3 + 64) % 64];
-    if (currentRMS - prevRMS > 0.12 && AudioLipSync.plosiveCooldown <= 0) {
-        AudioLipSync.plosiveDetected = true;
-        AudioLipSync.plosiveCooldown = 10;
-    } else {
-        AudioLipSync.plosiveDetected = false;
-    }
-    if (AudioLipSync.plosiveCooldown > 0) AudioLipSync.plosiveCooldown--;
-    AudioLipSync.breathDetected = (b.sub > 0.1 && b.mid < 0.05 && b.high < 0.03 && AudioLipSync.rmsSmoothed < 0.08);
-    if (AudioLipSync.breathDetected) {
-        AudioLipSync.breathIntensity = lerp(AudioLipSync.breathIntensity, b.sub * 2, 0.1);
-    } else {
-        AudioLipSync.breathIntensity = lerp(AudioLipSync.breathIntensity, 0, 0.05);
-    }
-    // ENHANCED: Stress/emphasis detection from RMS peaks
-    AudioLipSync.stressHistory[AudioLipSync.stressIdx] = currentRMS;
-    AudioLipSync.stressIdx = (AudioLipSync.stressIdx + 1) % 16;
-    let avgRMS = 0;
-    for (let i = 0; i < 16; i++) avgRMS += AudioLipSync.stressHistory[i];
-    avgRMS /= 16;
-    AudioLipSync.stressLevel = clamp((currentRMS - avgRMS) * 5, 0, 1);
-}
-
-function generateAudioViseme() {
-    const b = AudioLipSync.bandsSmoothed;
-    const rms = AudioLipSync.rmsSmoothed;
-    const vowel = AudioLipSync.vowelEnergy;
-    const fric = AudioLipSync.fricativeEnergy;
-    const cons = AudioLipSync.consonantEnergy;
-    const plosive = AudioLipSync.plosiveDetected;
-    const stress = AudioLipSync.stressLevel;
-    let jawTarget = rms * 1.8 + vowel * 0.4 + stress * 0.2;
-    if (plosive) jawTarget = Math.max(jawTarget, 0.65);
-    jawTarget = clamp(jawTarget, 0, 1);
-    const roundTarget = clamp(b.low * 0.8 - b.high * 0.3 - fric * 0.2, 0, 0.9);
-    const wideTarget = clamp(fric * 0.6 + b.high * 0.4 - b.low * 0.2, -0.3, 0.8);
-    const lipUTarget = clamp(jawTarget * 0.3 + vowel * 0.2 + stress * 0.1, 0, 0.6);
-    const lipLTarget = clamp(jawTarget * 0.4 + cons * 0.15, 0, 0.6);
-    const tongueTarget = clamp(cons * 0.4 + b.mid * 0.3 - b.low * 0.2, 0, 0.8);
-    const teethTarget = clamp(fric * 0.5 + wideTarget * 0.3 + jawTarget * 0.2, 0, 0.8);
-    const emoMod = 1.0 + AudioLipSync.emotionalIntensity * 0.3;
-    AudioLipSync.audioVisemeTarget.jaw = jawTarget * emoMod;
-    AudioLipSync.audioVisemeTarget.lipU = lipUTarget;
-    AudioLipSync.audioVisemeTarget.lipL = lipLTarget;
-    AudioLipSync.audioVisemeTarget.wide = wideTarget;
-    AudioLipSync.audioVisemeTarget.round = roundTarget;
-    AudioLipSync.audioVisemeTarget.tongue = tongueTarget;
-    AudioLipSync.audioVisemeTarget.teeth = teethTarget;
-    // ENHANCED: Lip corner asymmetry during speech
-    AudioLipSync.lipCornerTargetL = wideTarget * 0.5 + stress * 0.15 + (Math.sin(time * 7) * 0.02);
-    AudioLipSync.lipCornerTargetR = wideTarget * 0.5 + stress * 0.12 - (Math.sin(time * 7.3) * 0.02);
-}
-
-function updateSpeechState(dt) {
-    const rms = AudioLipSync.rmsSmoothed;
-    const threshold = 0.02;
-    switch (AudioLipSync.speechState) {
-        case 'silent':
-            AudioLipSync.silenceDuration += dt * 16.67;
-            if (rms > threshold) {
-                AudioLipSync.speechState = 'anticipation';
-                AudioLipSync.anticipationActive = true;
-                AudioLipSync.anticipationProgress = 0;
-                AudioLipSync.speechOnsetTime = performance.now();
-            }
-            break;
-        case 'anticipation':
-            AudioLipSync.anticipationProgress += dt * (1000 / AudioLipSync.anticipationDuration);
-            if (AudioLipSync.anticipationProgress >= 1 || rms > threshold * 3) {
-                AudioLipSync.speechState = 'speaking';
-                AudioLipSync.anticipationActive = false;
-                AudioLipSync.speechDuration = 0;
-            }
-            break;
-        case 'speaking':
-            AudioLipSync.speechDuration += dt * 16.67;
-            AudioLipSync.silenceDuration = 0;
-            if (rms < threshold) { AudioLipSync.speechState = 'pause'; AudioLipSync.silenceDuration = 0; }
-            break;
-        case 'pause':
-            AudioLipSync.silenceDuration += dt * 16.67;
-            if (rms > threshold) { AudioLipSync.speechState = 'speaking'; AudioLipSync.silenceDuration = 0; }
-            else if (AudioLipSync.silenceDuration > AudioLipSync.pauseThreshold) {
-                AudioLipSync.speechState = 'recovery';
-                AudioLipSync.recoveryActive = true;
-                AudioLipSync.recoveryProgress = 0;
-                AudioLipSync.speechEndTime = performance.now();
-            }
-            break;
-        case 'recovery':
-            AudioLipSync.recoveryProgress += dt * (1000 / AudioLipSync.recoveryDuration);
-            if (AudioLipSync.recoveryProgress >= 1) { AudioLipSync.speechState = 'silent'; AudioLipSync.recoveryActive = false; }
-            if (rms > threshold * 2) { AudioLipSync.speechState = 'speaking'; AudioLipSync.recoveryActive = false; }
-            break;
-    }
-}
-
-
-function updateJawInertia(dt) {
-    const targetJaw = AudioLipSync.audioVisemeTarget.jaw;
-    const displacement = targetJaw - AudioLipSync.jawPosition;
-    AudioLipSync.jawAcceleration = (displacement * AudioLipSync.jawSpring - AudioLipSync.jawVelocity * AudioLipSync.jawDamping) / AudioLipSync.jawMass;
-    AudioLipSync.jawVelocity += AudioLipSync.jawAcceleration * dt;
-    AudioLipSync.jawPosition += AudioLipSync.jawVelocity * dt;
-    AudioLipSync.jawPosition = clamp(AudioLipSync.jawPosition, 0, 1.1);
-    if (AudioLipSync.anticipationActive) {
-        const antCurve = easeOutCubic(AudioLipSync.anticipationProgress);
-        AudioLipSync.jawPosition = Math.max(AudioLipSync.jawPosition, antCurve * 0.08);
-    }
-    if (AudioLipSync.recoveryActive) {
-        const recCurve = 1 - easeOutCubic(AudioLipSync.recoveryProgress);
-        AudioLipSync.jawPosition *= recCurve;
-    }
-}
-
-function updateAudioLipSync(dt) {
-    if (!AudioLipSync.isActive) return;
-    if (AudioLipSync.analyser) {
-        AudioLipSync.rmsLevel = calculateRMS();
-        extractFrequencyBands();
-    }
-    AudioLipSync.rmsHistory[AudioLipSync.rmsHistoryIdx] = AudioLipSync.rmsLevel;
-    AudioLipSync.rmsHistoryIdx = (AudioLipSync.rmsHistoryIdx + 1) % 64;
-    AudioLipSync.rmsSmoothed = lerp(AudioLipSync.rmsSmoothed, AudioLipSync.rmsLevel, 0.25);
-    AudioLipSync.rmsPeak = Math.max(AudioLipSync.rmsPeak * 0.995, AudioLipSync.rmsSmoothed);
-    for (const k of Object.keys(AudioLipSync.bands)) {
-        AudioLipSync.bandsSmoothed[k] = lerp(AudioLipSync.bandsSmoothed[k], AudioLipSync.bands[k], 0.3);
-    }
-    detectPhonemeType();
-    updateSpeechState(dt);
-    generateAudioViseme();
-    updateJawInertia(dt);
-    const speed = 0.22 * dt;
-    for (const k of Object.keys(AudioLipSync.audioViseme)) {
-        if (k === 'jaw') { AudioLipSync.audioViseme.jaw = AudioLipSync.jawPosition; }
-        else { AudioLipSync.audioViseme[k] = lerp(AudioLipSync.audioViseme[k], AudioLipSync.audioVisemeTarget[k], speed); }
-    }
-    // Lip corner micro-movements
-    AudioLipSync.lipCornerL = lerp(AudioLipSync.lipCornerL, AudioLipSync.lipCornerTargetL, 0.12 * dt);
-    AudioLipSync.lipCornerR = lerp(AudioLipSync.lipCornerR, AudioLipSync.lipCornerTargetR, 0.12 * dt);
-    const volVariation = Math.abs(AudioLipSync.rmsLevel - AudioLipSync.rmsSmoothed);
-    AudioLipSync.emotionalIntensity = lerp(AudioLipSync.emotionalIntensity, volVariation * 5, 0.05);
-    AudioLipSync.speechEmphasis = clamp(AudioLipSync.rmsSmoothed / (AudioLipSync.rmsPeak || 0.1), 0, 2);
-    const volFill = document.getElementById('volFill');
-    if (volFill) volFill.style.width = (AudioLipSync.rmsSmoothed * 300) + '%';
-}
-
-
-/* ===================================================================
-   SYSTEM 2: FACIAL ACTION CODING SYSTEM (FACS) - Enhanced Full Rig
-   =================================================================== */
-const FACS = {
-    AU1: 0, AU2: 0, AU4: 0, AU5: 0, AU6: 0, AU7: 0, AU9: 0,
-    AU10: 0, AU11: 0, AU12: 0, AU13: 0, AU14: 0, AU15: 0,
-    AU16: 0, AU17: 0, AU18: 0, AU20: 0, AU22: 0, AU23: 0,
-    AU24: 0, AU25: 0, AU26: 0, AU27: 0, AU28: 0, AU43: 0,
-    AU45: 0, AU46: 0,
-    targets: {},
-    tensionMap: new Float32Array(68),
-    stretchMap: new Float32Array(68),
-    tremorPhase: new Float32Array(12),
-    tremorFreq: new Float32Array(12),
-    tremorAmp: new Float32Array(12),
-    deformMesh: new Float32Array(48),
-    deformTargets: new Float32Array(48),
-    asymmetryBias: 0, asymmetryPhase: 0,
-    // ENHANCED: Micro-expression system
-    microExpressionTimer: 0, microExpressionActive: false,
-    microExpressionType: '', microExpressionIntensity: 0,
-    microExpressionDuration: 0,
-    // ENHANCED: Dimple system
-    dimpleL: 0, dimpleR: 0, dimpleTargetL: 0, dimpleTargetR: 0,
-};
-
-Object.keys(FACS).forEach(k => {
-    if (typeof FACS[k] === 'number' && k.startsWith('AU')) FACS.targets[k] = 0;
-});
-for (let i = 0; i < 12; i++) {
-    FACS.tremorFreq[i] = 3 + Math.random() * 8;
-    FACS.tremorAmp[i] = 0.002 + Math.random() * 0.005;
-}
-FACS.asymmetryBias = (Math.random() - 0.5) * 0.08;
-
-const FACS_EMOTIONS = {
-    neutral: { AU1:0, AU2:0, AU4:0, AU5:0, AU6:0, AU12:0.1, AU25:0, AU26:0, AU43:0 },
-    happy: { AU1:0, AU2:0, AU4:0, AU5:0, AU6:0.8, AU12:0.9, AU25:0.3, AU26:0.1, AU43:0 },
-    sad: { AU1:0.8, AU2:0, AU4:0.6, AU5:0, AU6:0, AU12:-0.3, AU15:0.7, AU17:0.5, AU25:0.1, AU43:0.2 },
-    surprised: { AU1:0.9, AU2:0.9, AU4:0, AU5:0.9, AU6:0, AU12:0, AU25:0.5, AU26:0.8, AU27:0.6, AU43:0 },
-    angry: { AU1:0, AU2:0, AU4:0.9, AU5:0.3, AU6:0, AU7:0.6, AU9:0.5, AU12:-0.2, AU23:0.7, AU24:0.6, AU43:0.1 },
-    fearful: { AU1:0.8, AU2:0.7, AU4:0.6, AU5:0.8, AU6:0, AU12:0, AU20:0.7, AU25:0.4, AU26:0.5, AU43:0 },
-    disgusted: { AU1:0, AU2:0, AU4:0.5, AU5:0, AU6:0.3, AU7:0.4, AU9:0.8, AU10:0.7, AU15:0.4, AU25:0.3, AU43:0.1 },
-    thinking: { AU1:0.3, AU2:0.5, AU4:0.4, AU5:0, AU6:0, AU12:0.05, AU14:0.3, AU25:0.05, AU43:0 },
-    love: { AU1:0.2, AU2:0.2, AU4:0, AU5:0.2, AU6:0.7, AU12:0.7, AU25:0.2, AU43:0.15 },
-    confident: { AU1:0, AU2:0.2, AU4:0, AU5:0.15, AU6:0.4, AU12:0.5, AU14:0.2, AU25:0.1, AU43:0 },
-};
-
-
-/* ===================================================================
-   SYSTEM 3: TEXT-BASED LIP SYNC (Fallback)
-   =================================================================== */
-const LipSync = {
-    visemeMap: {
-        'sil': { jaw: 0, lipU: 0, lipL: 0, wide: 0, round: 0, tongue: 0, teeth: 0 },
-        'aa':  { jaw: 0.75, lipU: 0.3, lipL: 0.5, wide: 0.5, round: 0, tongue: 0.3, teeth: 0.4 },
-        'ae':  { jaw: 0.6, lipU: 0.2, lipL: 0.4, wide: 0.6, round: 0, tongue: 0.4, teeth: 0.3 },
-        'ah':  { jaw: 0.5, lipU: 0.2, lipL: 0.3, wide: 0.3, round: 0.1, tongue: 0.2, teeth: 0.2 },
-        'ao':  { jaw: 0.6, lipU: 0.3, lipL: 0.4, wide: -0.1, round: 0.6, tongue: 0.2, teeth: 0.1 },
-        'ee':  { jaw: 0.2, lipU: 0.1, lipL: 0.15, wide: 0.8, round: 0, tongue: 0.7, teeth: 0.5 },
-        'eh':  { jaw: 0.35, lipU: 0.15, lipL: 0.25, wide: 0.5, round: 0, tongue: 0.5, teeth: 0.3 },
-        'er':  { jaw: 0.3, lipU: 0.15, lipL: 0.2, wide: 0.1, round: 0.3, tongue: 0.6, teeth: 0.1 },
-        'ih':  { jaw: 0.2, lipU: 0.1, lipL: 0.15, wide: 0.5, round: 0, tongue: 0.6, teeth: 0.3 },
-        'iy':  { jaw: 0.15, lipU: 0.05, lipL: 0.1, wide: 0.7, round: 0, tongue: 0.8, teeth: 0.4 },
-        'oo':  { jaw: 0.35, lipU: 0.4, lipL: 0.3, wide: -0.3, round: 0.9, tongue: 0.3, teeth: 0 },
-        'uh':  { jaw: 0.3, lipU: 0.2, lipL: 0.2, wide: -0.1, round: 0.5, tongue: 0.3, teeth: 0 },
-        'pp':  { jaw: 0.05, lipU: 0.0, lipL: 0.0, wide: 0, round: 0.3, tongue: 0, teeth: 0 },
-        'ff':  { jaw: 0.1, lipU: 0.0, lipL: 0.15, wide: 0.1, round: 0, tongue: 0, teeth: 0.6 },
-        'th':  { jaw: 0.15, lipU: 0.05, lipL: 0.1, wide: 0.2, round: 0, tongue: 0.9, teeth: 0.4 },
-        'dd':  { jaw: 0.2, lipU: 0.1, lipL: 0.15, wide: 0.2, round: 0, tongue: 0.8, teeth: 0.2 },
-        'kk':  { jaw: 0.25, lipU: 0.1, lipL: 0.15, wide: 0.1, round: 0.1, tongue: 0.5, teeth: 0.1 },
-        'nn':  { jaw: 0.15, lipU: 0.05, lipL: 0.1, wide: 0.2, round: 0, tongue: 0.7, teeth: 0.2 },
-        'ss':  { jaw: 0.1, lipU: 0.05, lipL: 0.08, wide: 0.4, round: 0, tongue: 0.6, teeth: 0.5 },
-        'sh':  { jaw: 0.2, lipU: 0.15, lipL: 0.15, wide: -0.1, round: 0.5, tongue: 0.5, teeth: 0.2 },
-        'rr':  { jaw: 0.2, lipU: 0.1, lipL: 0.15, wide: 0, round: 0.3, tongue: 0.7, teeth: 0.1 },
-        'll':  { jaw: 0.25, lipU: 0.1, lipL: 0.15, wide: 0.2, round: 0, tongue: 0.9, teeth: 0.2 },
-        'ww':  { jaw: 0.2, lipU: 0.3, lipL: 0.2, wide: -0.2, round: 0.8, tongue: 0.2, teeth: 0 },
-        'ch':  { jaw: 0.25, lipU: 0.15, lipL: 0.15, wide: 0, round: 0.4, tongue: 0.6, teeth: 0.2 },
-        'mm':  { jaw: 0.02, lipU: 0.0, lipL: 0.0, wide: 0, round: 0.2, tongue: 0, teeth: 0 },
-    },
-    current: { jaw: 0, lipU: 0, lipL: 0, wide: 0, round: 0, tongue: 0, teeth: 0 },
-    target: { jaw: 0, lipU: 0, lipL: 0, wide: 0, round: 0, tongue: 0, teeth: 0 },
-    buffer: [], bufferIdx: 0, frameTimer: 0,
-    jawVelocity: 0, jawInertia: 0.85, emotionBlend: 0,
-};
-
-function textToPhonemeSequence(text) {
-    const rules = [
-        [/th/gi, 'th'], [/sh/gi, 'sh'], [/ch/gi, 'ch'], [/wh/gi, 'ww'],
-        [/oo|ou/gi, 'oo'], [/ee|ea/gi, 'ee'], [/ai|ay/gi, 'ae'],
-        [/oi|oy/gi, 'ao'], [/[aeiou]r/gi, 'er'], [/ng/gi, 'nn'],
-        [/ck|qu/gi, 'kk'], [/[pb]/gi, 'pp'], [/[fv]/gi, 'ff'],
-        [/[td]/gi, 'dd'], [/[kg]/gi, 'kk'], [/[mn]/gi, 'mm'],
-        [/[sz]/gi, 'ss'], [/[rl]/gi, 'rr'], [/[w]/gi, 'ww'],
-        [/a/gi, 'aa'], [/e/gi, 'eh'], [/i/gi, 'ih'], [/o/gi, 'ao'], [/u/gi, 'uh'],
-    ];
-    const seq = [];
-    const words = text.split(/\s+/);
-    for (const word of words) {
-        let remaining = word.toLowerCase();
-        while (remaining.length > 0) {
-            let matched = false;
-            for (const [pattern, viseme] of rules) {
-                const m = remaining.match(pattern);
-                if (m && m.index === 0) {
-                    const isVowel = 'aa ae ah ao ee eh er ih iy oo uh'.includes(viseme);
-                    const dur = isVowel ? (4 + Math.random() * 3) : (2 + Math.random() * 2);
-                    seq.push({ viseme, dur: Math.round(dur), coart: 0.3 });
-                    remaining = remaining.slice(m[0].length);
-                    matched = true; break;
-                }
-            }
-            if (!matched) remaining = remaining.slice(1);
-        }
-        seq.push({ viseme: 'sil', dur: 4 + Math.round(Math.random() * 3), coart: 0 });
-    }
-    return seq;
-}
-
-function getCoarticulatedViseme(seq, idx) {
-    const map = LipSync.visemeMap;
-    const cur = map[seq[idx]?.viseme] || map['sil'];
-    const next = idx + 1 < seq.length ? (map[seq[idx + 1]?.viseme] || map['sil']) : map['sil'];
-    const prev = idx > 0 ? (map[seq[idx - 1]?.viseme] || map['sil']) : map['sil'];
-    const coart = seq[idx]?.coart || 0.3;
-    const result = {};
-    for (const k of Object.keys(cur)) {
-        result[k] = cur[k] * 0.6 + next[k] * coart * 0.25 + prev[k] * 0.15;
-    }
-    return result;
-}
-
-
-/* ===================================================================
-   SYSTEM 4: ADVANCED EYE SYSTEM - Enhanced Blink + Gaze
-   ENHANCED: Micro-blinks, partial blinks, asymmetric blinks,
-   iris tremor, pupil oscillation, tear duct moisture
-   =================================================================== */
-const EyeSystem = {
-    saccadeTimer: 0, nextSaccade: 40,
-    saccadeX: 0, saccadeY: 0,
-    saccadeTargetX: 0, saccadeTargetY: 0, saccadeSpeed: 0.2,
-    gazeX: 0, gazeY: 0, gazeTargetX: 0, gazeTargetY: 0, gazeSmooth: 0.06,
-    focusPoint: { x: 0.5, y: 0.4 },
-    pupilDilation: 1.0, pupilDilationTarget: 1.0, dilationSpeed: 0.03,
-    lidOpenL: 1.0, lidOpenR: 1.0, lidTargetL: 1.0, lidTargetR: 1.0,
-    lidVelocityL: 0, lidVelocityR: 0, lidSpring: 0.15, lidDamping: 0.7,
-    blinkState: 'open', blinkTimer: 0, nextBlink: 120, blinkProgress: 0,
-    doubleBlink: false, doubleBlinkChance: 0.15,
-    wetReflectionPhase: 0, tearlineIntensity: 0.4, moistureLevel: 0.6,
-    emotionalSquint: 0, emotionalWiden: 0,
-    gazeMode: 'idle', gazeShiftTimer: 0, gazeShiftInterval: 80,
-    conversationalTarget: { x: 0, y: 0 },
-    speechBlinkBoost: 0, lastWordBoundary: 0,
-    wetnessPhase: 0, wetnessIntensity: 0.5,
-    irisRotation: 0, irisDepthPhase: 0,
-    lidSkinDragL: 0, lidSkinDragR: 0, lidSkinVelL: 0, lidSkinVelR: 0,
-    // ENHANCED: Micro-blink system
-    microBlinkTimer: 0, microBlinkInterval: 300, microBlinkActive: false,
-    microBlinkProgress: 0, microBlinkIntensity: 0.3,
-    // ENHANCED: Partial/lazy blink
-    partialBlinkChance: 0.2, isPartialBlink: false,
-    // ENHANCED: Asymmetric blink (one eye slightly ahead)
-    blinkAsymmetry: 0, blinkAsymmetryTarget: 0,
-    // ENHANCED: Iris micro-tremor (physiological nystagmus)
-    irisTremorX: 0, irisTremorY: 0,
-    irisTremorPhaseX: Math.random() * 100, irisTremorPhaseY: Math.random() * 100,
-    // ENHANCED: Pupil oscillation (hippus)
-    pupilOscPhase: 0, pupilOscAmp: 0.03,
-    // ENHANCED: Tear duct moisture pooling
-    tearDuctMoistureL: 0, tearDuctMoistureR: 0,
-    // ENHANCED: Lower lid subtle movement
-    lowerLidL: 0, lowerLidR: 0, lowerLidTargetL: 0, lowerLidTargetR: 0,
-    // ENHANCED: Eye corner crinkle (crow's feet)
-    crinkleL: 0, crinkleR: 0,
-};
-
-function getBlinkCurve(t) {
-    if (t < 0.12) return 1 - (t / 0.12);
-    if (t < 0.25) return 0;
-    return (t - 0.25) / 0.75;
-}
-
-// ENHANCED: Partial blink curve (doesn't fully close)
-function getPartialBlinkCurve(t, intensity) {
-    if (t < 0.15) return 1 - (t / 0.15) * intensity;
-    if (t < 0.3) return 1 - intensity;
-    return 1 - intensity + (t - 0.3) / 0.7 * intensity;
-}
-
-function updateConversationalGaze(dt) {
-    EyeSystem.gazeShiftTimer += dt;
-    if (EyeSystem.gazeShiftTimer > EyeSystem.gazeShiftInterval) {
-        EyeSystem.gazeShiftTimer = 0;
-        switch (EyeSystem.gazeMode) {
-            case 'speaking':
-                EyeSystem.gazeShiftInterval = 40 + Math.random() * 80;
-                if (Math.random() < 0.6) {
-                    EyeSystem.conversationalTarget.x = (Math.random() - 0.5) * 2.5;
-                    EyeSystem.conversationalTarget.y = (Math.random() - 0.3) * 1.5;
-                } else {
-                    EyeSystem.conversationalTarget.x = (Math.random() - 0.5) * 0.5;
-                    EyeSystem.conversationalTarget.y = (Math.random() - 0.5) * 0.3;
-                }
-                break;
-            case 'listening':
-                EyeSystem.gazeShiftInterval = 60 + Math.random() * 120;
-                if (Math.random() < 0.8) {
-                    EyeSystem.conversationalTarget.x = (Math.random() - 0.5) * 0.6;
-                    EyeSystem.conversationalTarget.y = (Math.random() - 0.5) * 0.4;
-                } else {
-                    EyeSystem.conversationalTarget.x = (Math.random() - 0.5) * 2;
-                    EyeSystem.conversationalTarget.y = -0.5 + Math.random() * 0.5;
-                }
-                break;
-            case 'thinking':
-                EyeSystem.gazeShiftInterval = 100 + Math.random() * 150;
-                EyeSystem.conversationalTarget.x = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random());
-                EyeSystem.conversationalTarget.y = -0.8 - Math.random() * 0.5;
-                break;
-            default:
-                EyeSystem.gazeShiftInterval = 80 + Math.random() * 200;
-                EyeSystem.conversationalTarget.x = (Math.random() - 0.5) * 1.5;
-                EyeSystem.conversationalTarget.y = (Math.random() - 0.5) * 1;
-        }
-    }
-    EyeSystem.gazeTargetX = lerp(EyeSystem.gazeTargetX, EyeSystem.conversationalTarget.x, 0.03 * dt);
-    EyeSystem.gazeTargetY = lerp(EyeSystem.gazeTargetY, EyeSystem.conversationalTarget.y, 0.03 * dt);
-}
-
-
-/* ===================================================================
-   SYSTEM 5: EYEBROW + FOREHEAD (Enhanced with speech emphasis)
-   =================================================================== */
-const BrowSystem = {
-    innerL: 0, innerR: 0, outerL: 0, outerR: 0,
-    innerLTarget: 0, innerRTarget: 0, outerLTarget: 0, outerRTarget: 0,
-    wrinkleLines: [0, 0, 0, 0, 0],
-    wrinkleTarget: [0, 0, 0, 0, 0],
-    compression: 0, compressionTarget: 0,
-    tension: 0, tensionTarget: 0,
-    asymmetry: 0, foldDepth: 0,
-    speechMicroMovement: 0,
-    // ENHANCED: Per-brow velocity for natural lag
-    innerLVel: 0, innerRVel: 0, outerLVel: 0, outerRVel: 0,
-    // ENHANCED: Emphasis flash (quick raise on stressed syllables)
-    emphasisFlash: 0, emphasisFlashTarget: 0,
-    // ENHANCED: Corrugator furrow depth
-    corrugatorDepth: 0, corrugatorTarget: 0,
-};
-
-/* ===================================================================
-   SYSTEM 6: NOSE + CHEEK + SKIN DEFORMATION (Enhanced)
-   =================================================================== */
-const NoseSystem = {
-    nostrilFlareL: 0, nostrilFlareR: 0, nostrilFlareTarget: 0,
-    breathInfluence: 0, wrinkle: 0, wrinkleTarget: 0,
-    // ENHANCED: Nose tip movement during speech
-    tipMovement: 0, tipTarget: 0,
-};
-
-const CheekSystem = {
-    puffL: 0, puffR: 0, puffTargetL: 0, puffTargetR: 0,
-    compressionL: 0, compressionR: 0,
-    highlightL: 0, highlightR: 0,
-    blushIntensity: 0, blushTarget: 0,
-    blushColor: [240, 140, 120],
-    stretchL: 0, stretchR: 0,
-    jawDeformL: 0, jawDeformR: 0,
-    // ENHANCED: Nasolabial fold depth
-    nasolabialL: 0, nasolabialR: 0, nasolabialTargetL: 0, nasolabialTargetR: 0,
-    // ENHANCED: Apple of cheek position (rises with smile)
-    appleHeightL: 0, appleHeightR: 0,
-};
-
-const SkinDeform = {
-    chinFold: 0, chinFoldTarget: 0,
-    neckTendonL: 0, neckTendonR: 0, neckTendonTargetL: 0, neckTendonTargetR: 0,
-    jawMuscleL: 0, jawMuscleR: 0,
-    lipCompressionUpper: 0, lipCompressionLower: 0, lipCompressionTarget: 0,
-    eyelidDragL: 0, eyelidDragR: 0,
-    // ENHANCED: Mentalis (chin) muscle puckering
-    mentalisPucker: 0, mentalisPuckerTarget: 0,
-    // ENHANCED: Platysma (neck muscle) tension during strong emotions
-    platysmaTension: 0, platysmaTarget: 0,
-};
-
-
-/* ===================================================================
-   SYSTEM 7: ADVANCED BODY + PROCEDURAL GESTURES (Enhanced)
-   More gesture variety, better finger articulation, rest poses
-   =================================================================== */
-const BodySystem = {
-    torsoSwayX: 0, torsoSwayY: 0, torsoSwayPhase: 0, torsoSwaySpeed: 0.008,
-    shoulderL: 0, shoulderR: 0, shoulderLTarget: 0, shoulderRTarget: 0,
-    breathPhase: 0, breathRate: 0.025, chestExpand: 0, breathDepth: 1.0,
-    armR: { shoulder: 0, elbow: 0, wrist: 0, shoulderTarget: 0, elbowTarget: 0, wristTarget: 0 },
-    armL: { shoulder: 0, elbow: 0, wrist: 0, shoulderTarget: 0, elbowTarget: 0, wristTarget: 0 },
-    fingersR: new Float32Array(15), fingersL: new Float32Array(15),
-    fingerTargetsR: new Float32Array(15), fingerTargetsL: new Float32Array(15),
-    gestureQueue: [], currentGesture: null, gestureProgress: 0, gestureSpeed: 0.02,
-    idleTimer: 0, nextIdle: 200, idleType: 'none',
-    neckRotX: 0, neckRotY: 0, neckRotZ: 0,
-    neckTargetX: 0, neckTargetY: 0, neckTargetZ: 0,
-    headBobPhase: 0, headBobIntensity: 0,
-    headNod: 0, headNodTarget: 0,
-    headInertiaX: 0, headInertiaY: 0, headVelX: 0, headVelY: 0,
-    headMass: 1.5, headDamping: 0.88,
-    neckWeightSag: 0, neckWeightTarget: 0,
-    shoulderCompL: 0, shoulderCompR: 0,
-    conversationalGestureTimer: 0, conversationalGestureInterval: 200,
-    fingerSpeechPhase: 0,
-    swallowTimer: 0, swallowActive: false, swallowProgress: 0, nextSwallow: 600,
-    lipMoistenTimer: 0, lipMoistenActive: false, lipMoistenProgress: 0, nextLipMoisten: 900,
-    microHeadX: 0, microHeadY: 0, microHeadZ: 0,
-    microHeadPhaseX: Math.random() * 100,
-    microHeadPhaseY: Math.random() * 100,
-    microHeadPhaseZ: Math.random() * 100,
-    // ENHANCED: Rest pose for hands (natural curl)
-    restPoseR: [0.15, 0.1, 0.05, 0.12, 0.08, 0.04, 0.1, 0.07, 0.03, 0.13, 0.09, 0.05, 0.18, 0.12, 0.06],
-    restPoseL: [0.15, 0.1, 0.05, 0.12, 0.08, 0.04, 0.1, 0.07, 0.03, 0.13, 0.09, 0.05, 0.18, 0.12, 0.06],
-    // ENHANCED: Hand expressiveness during speech
-    handExpressiveness: 0, handExpressivenessTarget: 0,
-    // ENHANCED: Shoulder shrug micro-movement
-    shoulderShrug: 0, shoulderShrugTarget: 0,
-    // ENHANCED: Weight shift (subtle lean)
-    weightShift: 0, weightShiftTarget: 0, weightShiftTimer: 0, weightShiftInterval: 400,
-    // ENHANCED: Head tilt linked to emotion
-    emotionalHeadTilt: 0, emotionalHeadTiltTarget: 0,
-};
-
-const GESTURES = {
-    wave: { duration: 120, keyframes: [
-        { t: 0, armL: { shoulder: -0.8, elbow: -0.9, wrist: 0 } },
-        { t: 0.2, armL: { shoulder: -1.0, elbow: -1.2, wrist: 0.5 } },
-        { t: 0.4, armL: { shoulder: -1.0, elbow: -1.2, wrist: -0.5 } },
-        { t: 0.6, armL: { shoulder: -1.0, elbow: -1.2, wrist: 0.5 } },
-        { t: 0.8, armL: { shoulder: -0.8, elbow: -0.9, wrist: -0.3 } },
-        { t: 1, armL: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    point: { duration: 80, keyframes: [
-        { t: 0, armR: { shoulder: -0.3, elbow: -0.5, wrist: 0 } },
-        { t: 0.3, armR: { shoulder: -0.6, elbow: -0.8, wrist: -0.2 } },
-        { t: 0.7, armR: { shoulder: -0.6, elbow: -0.8, wrist: -0.2 } },
-        { t: 1, armR: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    explain: { duration: 100, keyframes: [
-        { t: 0, armR: { shoulder: -0.2, elbow: -0.3, wrist: 0 } },
-        { t: 0.25, armR: { shoulder: -0.4, elbow: -0.6, wrist: 0.3 } },
-        { t: 0.5, armR: { shoulder: -0.3, elbow: -0.4, wrist: -0.2 } },
-        { t: 0.75, armR: { shoulder: -0.4, elbow: -0.5, wrist: 0.2 } },
-        { t: 1, armR: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    explain_both: { duration: 120, keyframes: [
-        { t: 0, armR: { shoulder: -0.2, elbow: -0.3, wrist: 0 }, armL: { shoulder: -0.2, elbow: -0.3, wrist: 0 } },
-        { t: 0.2, armR: { shoulder: -0.35, elbow: -0.5, wrist: 0.2 }, armL: { shoulder: -0.3, elbow: -0.4, wrist: -0.15 } },
-        { t: 0.5, armR: { shoulder: -0.3, elbow: -0.4, wrist: -0.15 }, armL: { shoulder: -0.35, elbow: -0.5, wrist: 0.2 } },
-        { t: 0.8, armR: { shoulder: -0.25, elbow: -0.35, wrist: 0.1 }, armL: { shoulder: -0.25, elbow: -0.35, wrist: 0.1 } },
-        { t: 1, armR: { shoulder: 0, elbow: 0, wrist: 0 }, armL: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    shrug: { duration: 60, keyframes: [
-        { t: 0, armR: { shoulder: 0, elbow: 0, wrist: 0 }, armL: { shoulder: 0, elbow: 0, wrist: 0 } },
-        { t: 0.3, armR: { shoulder: -0.3, elbow: -0.2, wrist: 0.3 }, armL: { shoulder: -0.3, elbow: -0.2, wrist: 0.3 } },
-        { t: 0.7, armR: { shoulder: -0.3, elbow: -0.2, wrist: 0.3 }, armL: { shoulder: -0.3, elbow: -0.2, wrist: 0.3 } },
-        { t: 1, armR: { shoulder: 0, elbow: 0, wrist: 0 }, armL: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    nod: { duration: 40, keyframes: [
-        { t: 0, headNod: 0 }, { t: 0.3, headNod: 0.08 }, { t: 0.6, headNod: -0.03 }, { t: 1, headNod: 0 },
-    ]},
-    tilt_right: { duration: 50, keyframes: [
-        { t: 0, headNod: 0 }, { t: 0.4, headNod: 0.04 }, { t: 1, headNod: 0 },
-    ]},
-    open_palm: { duration: 90, keyframes: [
-        { t: 0, armR: { shoulder: -0.15, elbow: -0.25, wrist: 0 } },
-        { t: 0.3, armR: { shoulder: -0.35, elbow: -0.55, wrist: 0.15 } },
-        { t: 0.7, armR: { shoulder: -0.35, elbow: -0.55, wrist: 0.15 } },
-        { t: 1, armR: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    // ENHANCED: New gestures
-    thinking_pose: { duration: 150, keyframes: [
-        { t: 0, armR: { shoulder: -0.1, elbow: -0.2, wrist: 0 } },
-        { t: 0.2, armR: { shoulder: -0.4, elbow: -0.8, wrist: 0.1 } },
-        { t: 0.7, armR: { shoulder: -0.4, elbow: -0.8, wrist: 0.15 } },
-        { t: 1, armR: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    emphasis_right: { duration: 60, keyframes: [
-        { t: 0, armR: { shoulder: -0.1, elbow: -0.2, wrist: 0 } },
-        { t: 0.3, armR: { shoulder: -0.3, elbow: -0.45, wrist: -0.2 } },
-        { t: 0.6, armR: { shoulder: -0.25, elbow: -0.4, wrist: 0.1 } },
-        { t: 1, armR: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    count_fingers: { duration: 140, keyframes: [
-        { t: 0, armR: { shoulder: -0.2, elbow: -0.4, wrist: 0 } },
-        { t: 0.25, armR: { shoulder: -0.35, elbow: -0.6, wrist: 0.1 } },
-        { t: 0.5, armR: { shoulder: -0.35, elbow: -0.6, wrist: -0.1 } },
-        { t: 0.75, armR: { shoulder: -0.35, elbow: -0.6, wrist: 0.1 } },
-        { t: 1, armR: { shoulder: 0, elbow: 0, wrist: 0 } },
-    ]},
-    head_shake: { duration: 50, keyframes: [
-        { t: 0, headNod: 0 }, { t: 0.25, headNod: -0.04 }, { t: 0.5, headNod: 0.04 }, { t: 0.75, headNod: -0.02 }, { t: 1, headNod: 0 },
-    ]},
-};
-
-
-/* ===================================================================
-   SYSTEM 8: PHYSICS ENGINE (Enhanced)
-   =================================================================== */
-const Physics = {
-    hairStrands: [], hairGravity: 0.002, hairDamping: 0.92, hairStiffness: 0.08,
-    skinBounce: 0, skinBounceVel: 0,
-    cheekJiggle: 0, cheekJiggleVel: 0, neckTension: 0,
-    clothOffset: 0, clothVel: 0, clothDamping: 0.9, clothStiffness: 0.05,
-    inertiaX: 0, inertiaY: 0, prevHeadX: 0, prevHeadY: 0,
-    jawRecoil: 0, jawRecoilVel: 0,
-    lipBounceU: 0, lipBounceUVel: 0, lipBounceL: 0, lipBounceLVel: 0,
-    tongueX: 0, tongueY: 0, tongueVelX: 0, tongueVelY: 0,
-    tongueCurl: 0, tongueCurlTarget: 0,
-    // ENHANCED: Soft tissue momentum
-    softTissueMomentum: 0, softTissueVel: 0,
-    // ENHANCED: Ear lobe physics
-    earLobeVelL: 0, earLobeVelR: 0, earLobeL: 0, earLobeR: 0,
-};
-
-function initHairPhysics() {
-    Physics.hairStrands = [];
-    for (let i = 0; i < 32; i++) {
-        const angle = (i / 32) * Math.PI * 1.4 - Math.PI * 0.7;
-        Physics.hairStrands.push({
-            baseX: Math.cos(angle) * 85, baseY: Math.sin(angle) * 60 - 50,
-            tipX: Math.cos(angle) * 105, tipY: Math.sin(angle) * 80 - 40,
-            midX: Math.cos(angle) * 95, midY: Math.sin(angle) * 70 - 45,
-            velX: 0, velY: 0, midVelX: 0, midVelY: 0,
-            length: 25 + Math.random() * 15,
-            stiffness: 0.04 + Math.random() * 0.04,
-            damping: 0.88 + Math.random() * 0.06,
-            thickness: 0.6 + Math.random() * 0.8,
-            hue: Math.random() * 0.1,
-        });
-    }
-}
-initHairPhysics();
-
-/* ===================================================================
-   SYSTEM 9: CINEMATIC SHADING ENGINE (Enhanced)
-   =================================================================== */
-const Shading = {
-    sssIntensity: 0.38, sssColor: [255, 200, 180],
-    skinBase: [245, 215, 195], skinShadow: [200, 150, 120], skinHighlight: [255, 245, 235],
-    aoIntensity: 0.28, rimLightAngle: -0.3, rimLightIntensity: 0.45,
-    rimLightColor: [100, 180, 255],
-    specularIntensity: 0.65, specularSize: 0.3,
-    poreDensity: 60, poreSize: 0.6,
-    lightDirection: { x: -0.3, y: -0.5 }, softLightRadius: 200,
-    lightBreathPhase: 0, lightBreathIntensity: 0.03,
-    salivaGloss: 0.4, salivaGlossPhase: 0,
-    mouthShadowDepth: 0,
-};
-
-/* ===================================================================
-   SYSTEM 10: MEDIAPIPE FACEMESH INTEGRATION
-   =================================================================== */
-const FaceTracking = {
-    enabled: false, landmarks: null,
-    headRotation: { pitch: 0, yaw: 0, roll: 0 },
-    mouthOpen: 0, mouthWide: 0,
-    eyeOpenL: 1, eyeOpenR: 1, browL: 0, browR: 0,
-    blendShapes: {}, lastUpdate: 0, smoothing: 0.3,
-};
-
-/* ===================================================================
-   SYSTEM 11: ANIMATION STATE + CINEMATIC TIMING
-   =================================================================== */
-const AnimState = {
-    currentState: 'idle', previousState: 'idle',
-    transitionProgress: 1, transitionSpeed: 0.05,
-    states: { idle: { priority: 0 }, speaking: { priority: 1 }, listening: { priority: 1 }, emoting: { priority: 2 }, gesturing: { priority: 2 }, tracking: { priority: 3 } },
-    lastFrameTime: 0, deltaTime: 16.67, fps: 60, frameCount: 0,
-    lerpPool: new Float32Array(128),
-    cinematicBeat: 0, cinematicTempo: 0.5,
-    imperfectionSeed: Math.random() * 1000, imperfectionPhase: 0,
-};
-
-function transitionTo(newState) {
-    if (AnimState.currentState !== newState) {
-        AnimState.previousState = AnimState.currentState;
-        AnimState.currentState = newState;
-        AnimState.transitionProgress = 0;
-    }
-}
-
-/* ===================================================================
-   CANVAS SETUP + MASTER STATE
-   =================================================================== */
-const cv = document.getElementById('avatarCanvas2d');
-const cx = cv.getContext('2d', { alpha: false });
-const W = cv.width, H = cv.height;
-const CX = W / 2;
-
-let speaking = false;
-let currentEmotion = 'neutral';
-let particles = [];
-let time = 0;
-
-/* ===================================================================
-   UTILITY FUNCTIONS
-   =================================================================== */
-function lerp(a, b, t) { return a + (b - a) * t; }
-function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-function smoothstep(edge0, edge1, x) { const t = clamp((x - edge0) / (edge1 - edge0), 0, 1); return t * t * (3 - 2 * t); }
-function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-function easeInOutQuad(t) { return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; }
-function noise(x) { return Math.sin(x * 12.9898 + x * 78.233) * 0.5 + 0.5; }
-function perlin1D(x) { return (Math.sin(x * 1.1) + Math.sin(x * 2.3) * 0.5 + Math.sin(x * 4.7) * 0.25) / 1.75; }
-
-
-/* ===================================================================
-   UPDATE: FACS ENGINE (Enhanced with micro-expressions + dimples)
-   =================================================================== */
-function updateFACS(dt) {
-    const speed = 0.08 * dt;
-    for (const key of Object.keys(FACS.targets)) {
-        if (typeof FACS[key] === 'number') {
-            FACS[key] = lerp(FACS[key], FACS.targets[key], speed);
-        }
-    }
-    // Muscle tremor
-    for (let i = 0; i < 12; i++) {
-        FACS.tremorPhase[i] += FACS.tremorFreq[i] * 0.01 * dt;
-        const tremorVal = Math.sin(FACS.tremorPhase[i]) * FACS.tremorAmp[i];
-        if (i < FACS.tensionMap.length) FACS.tensionMap[i] += tremorVal;
-    }
-    const tension = FACS.AU4 * 0.5 + FACS.AU7 * 0.3 + FACS.AU23 * 0.4;
-    for (let i = 0; i < FACS.tensionMap.length; i++) {
-        FACS.tensionMap[i] = lerp(FACS.tensionMap[i], tension * (0.5 + noise(i * 0.3 + time) * 0.5), 0.05);
-    }
-    const jawStretch = FACS.AU26 * 0.6 + FACS.AU27 * 0.8;
-    for (let i = 30; i < 50; i++) {
-        FACS.stretchMap[i] = lerp(FACS.stretchMap[i], jawStretch * 0.3, 0.06);
-    }
-    FACS.asymmetryPhase += 0.003 * dt;
-    for (let i = 0; i < 48; i += 2) {
-        FACS.deformMesh[i] = lerp(FACS.deformMesh[i], FACS.deformTargets[i], 0.04 * dt);
-        FACS.deformMesh[i+1] = lerp(FACS.deformMesh[i+1], FACS.deformTargets[i+1], 0.04 * dt);
-    }
-    const jawOpen = FACS.AU26 + FACS.AU27 * 0.5;
-    FACS.deformTargets[20] = jawOpen * 2;
-    FACS.deformTargets[21] = jawOpen * 4;
-    FACS.deformTargets[10] = -jawOpen * 1.5;
-    FACS.deformTargets[14] = -jawOpen * 1.5;
-    // ENHANCED: Dimple system (activated by smile AU12)
-    FACS.dimpleTargetL = FACS.AU12 > 0.4 ? (FACS.AU12 - 0.4) * 1.5 : 0;
-    FACS.dimpleTargetR = FACS.AU12 > 0.4 ? (FACS.AU12 - 0.4) * 1.5 + FACS.asymmetryBias * 0.5 : 0;
-    FACS.dimpleL = lerp(FACS.dimpleL, FACS.dimpleTargetL, 0.06 * dt);
-    FACS.dimpleR = lerp(FACS.dimpleR, FACS.dimpleTargetR, 0.06 * dt);
-    // ENHANCED: Micro-expression system
-    FACS.microExpressionTimer += dt;
-    if (!FACS.microExpressionActive && FACS.microExpressionTimer > 300 + Math.random() * 500) {
-        FACS.microExpressionTimer = 0;
-        if (Math.random() < 0.15) { // 15% chance of micro-expression
-            FACS.microExpressionActive = true;
-            FACS.microExpressionProgress = 0;
-            FACS.microExpressionDuration = 8 + Math.random() * 12;
-            const types = ['brow_flash', 'lip_press', 'nose_wrinkle', 'eye_narrow'];
-            FACS.microExpressionType = types[Math.floor(Math.random() * types.length)];
-            FACS.microExpressionIntensity = 0.2 + Math.random() * 0.3;
-        }
-    }
-    if (FACS.microExpressionActive) {
-        FACS.microExpressionProgress = (FACS.microExpressionProgress || 0) + dt;
-        const prog = FACS.microExpressionProgress / FACS.microExpressionDuration;
-        const intensity = FACS.microExpressionIntensity * Math.sin(prog * Math.PI);
-        switch (FACS.microExpressionType) {
-            case 'brow_flash': FACS.targets.AU1 += intensity * 0.4; FACS.targets.AU2 += intensity * 0.3; break;
-            case 'lip_press': FACS.targets.AU24 += intensity * 0.5; break;
-            case 'nose_wrinkle': FACS.targets.AU9 += intensity * 0.3; break;
-            case 'eye_narrow': FACS.targets.AU7 += intensity * 0.4; break;
-        }
-        if (prog >= 1) FACS.microExpressionActive = false;
-    }
-    const activeAUs = Object.keys(FACS.targets).filter(k => Math.abs(FACS.targets[k]) > 0.1);
-    const facsDisp = document.getElementById('facsDisplay');
-    if (facsDisp) facsDisp.textContent = 'FACS: ' + (activeAUs.length > 0 ? activeAUs.slice(0, 5).join(' ') : 'NEUTRAL');
-}
-
-
-/* ===================================================================
-   UPDATE: COMBINED LIP SYNC (Audio-driven primary, text fallback)
-   =================================================================== */
-function updateLipSync(dt) {
-    if (AudioLipSync.isActive && AudioLipSync.speechState !== 'silent') {
-        for (const k of Object.keys(LipSync.current)) {
-            LipSync.current[k] = lerp(LipSync.current[k], AudioLipSync.audioViseme[k], 0.3 * dt);
-        }
-    } else if (speaking && LipSync.buffer.length > 0) {
-        LipSync.frameTimer += dt;
-        const cur = LipSync.buffer[LipSync.bufferIdx];
-        if (cur && LipSync.frameTimer >= cur.dur) {
-            LipSync.frameTimer = 0;
-            LipSync.bufferIdx++;
-            if (LipSync.bufferIdx >= LipSync.buffer.length) LipSync.bufferIdx = LipSync.buffer.length - 1;
-            LipSync.target = getCoarticulatedViseme(LipSync.buffer, LipSync.bufferIdx);
-        }
-        const jawTarget = LipSync.target.jaw || 0;
-        const jawDiff = jawTarget - LipSync.current.jaw;
-        LipSync.jawVelocity = LipSync.jawVelocity * LipSync.jawInertia + jawDiff * 0.2;
-        LipSync.current.jaw += LipSync.jawVelocity * dt;
-        const lerpSpeed = 0.15 * dt;
-        for (const k of ['lipU', 'lipL', 'wide', 'round', 'tongue', 'teeth']) {
-            LipSync.current[k] = lerp(LipSync.current[k], LipSync.target[k] || 0, lerpSpeed);
-        }
-    } else if (!speaking) {
-        const silSpeed = 0.08 * dt;
-        for (const k of Object.keys(LipSync.current)) {
-            LipSync.current[k] = lerp(LipSync.current[k], 0, silSpeed);
-        }
-    }
-    FACS.targets.AU26 = LipSync.current.jaw * 0.7;
-    FACS.targets.AU27 = LipSync.current.jaw > 0.5 ? (LipSync.current.jaw - 0.5) * 1.5 : 0;
-    FACS.targets.AU25 = LipSync.current.jaw * 0.5 + LipSync.current.lipU * 0.3;
-    FACS.targets.AU20 = clamp(LipSync.current.wide * 0.6, 0, 1);
-    FACS.targets.AU22 = clamp(LipSync.current.round * 0.7, 0, 1);
-    FACS.targets.AU18 = clamp(LipSync.current.round * 0.5, 0, 1);
-    SkinDeform.lipCompressionTarget = (LipSync.current.round > 0.3) ? LipSync.current.round * 0.5 : 0;
-    SkinDeform.lipCompressionUpper = lerp(SkinDeform.lipCompressionUpper, SkinDeform.lipCompressionTarget, 0.1 * dt);
-    SkinDeform.lipCompressionLower = lerp(SkinDeform.lipCompressionLower, SkinDeform.lipCompressionTarget * 0.7, 0.08 * dt);
-}
-
-
-/* ===================================================================
-   UPDATE: EYE SYSTEM (MASSIVELY ENHANCED)
-   Micro-blinks, partial blinks, asymmetric blinks, iris tremor,
-   pupil hippus, lower lid movement, crow's feet
-   =================================================================== */
-function updateEyeSystem(dt) {
-    updateConversationalGaze(dt);
-    // Micro-saccades
-    EyeSystem.saccadeTimer += dt;
-    if (EyeSystem.saccadeTimer > EyeSystem.nextSaccade) {
-        EyeSystem.saccadeTimer = 0;
-        EyeSystem.nextSaccade = 25 + Math.random() * 70;
-        EyeSystem.saccadeTargetX = (Math.random() - 0.5) * 3;
-        EyeSystem.saccadeTargetY = (Math.random() - 0.5) * 2;
-    }
-    EyeSystem.saccadeX = lerp(EyeSystem.saccadeX, EyeSystem.saccadeTargetX, EyeSystem.saccadeSpeed * dt);
-    EyeSystem.saccadeY = lerp(EyeSystem.saccadeY, EyeSystem.saccadeTargetY, EyeSystem.saccadeSpeed * dt);
-    EyeSystem.gazeX = lerp(EyeSystem.gazeX, EyeSystem.gazeTargetX, EyeSystem.gazeSmooth * dt);
-    EyeSystem.gazeY = lerp(EyeSystem.gazeY, EyeSystem.gazeTargetY, EyeSystem.gazeSmooth * dt);
-    // ENHANCED: Iris micro-tremor (physiological nystagmus - always present)
-    EyeSystem.irisTremorPhaseX += (8 + Math.random() * 4) * 0.01 * dt;
-    EyeSystem.irisTremorPhaseY += (7 + Math.random() * 5) * 0.01 * dt;
-    EyeSystem.irisTremorX = Math.sin(EyeSystem.irisTremorPhaseX) * 0.15 + Math.sin(EyeSystem.irisTremorPhaseX * 2.7) * 0.08;
-    EyeSystem.irisTremorY = Math.sin(EyeSystem.irisTremorPhaseY) * 0.12 + Math.cos(EyeSystem.irisTremorPhaseY * 3.1) * 0.06;
-    // ENHANCED: Pupil oscillation (hippus - constant subtle dilation/constriction)
-    EyeSystem.pupilOscPhase += 0.02 * dt;
-    const hippus = Math.sin(EyeSystem.pupilOscPhase) * EyeSystem.pupilOscAmp;
-    EyeSystem.pupilDilation = lerp(EyeSystem.pupilDilation, EyeSystem.pupilDilationTarget + hippus, EyeSystem.dilationSpeed * dt);
-    // Eyelid physics (spring-damper with skin drag)
-    const forceL = (EyeSystem.lidTargetL - EyeSystem.lidOpenL) * EyeSystem.lidSpring;
-    EyeSystem.lidVelocityL = (EyeSystem.lidVelocityL + forceL) * EyeSystem.lidDamping;
-    EyeSystem.lidOpenL += EyeSystem.lidVelocityL * dt;
-    const forceR = (EyeSystem.lidTargetR - EyeSystem.lidOpenR) * EyeSystem.lidSpring;
-    EyeSystem.lidVelocityR = (EyeSystem.lidVelocityR + forceR) * EyeSystem.lidDamping;
-    EyeSystem.lidOpenR += EyeSystem.lidVelocityR * dt;
-    // Eyelid skin drag
-    EyeSystem.lidSkinVelL += (EyeSystem.lidVelocityL * 0.3 - EyeSystem.lidSkinDragL * 0.1) * dt;
-    EyeSystem.lidSkinVelL *= 0.85;
-    EyeSystem.lidSkinDragL += EyeSystem.lidSkinVelL * dt;
-    EyeSystem.lidSkinVelR += (EyeSystem.lidVelocityR * 0.3 - EyeSystem.lidSkinDragR * 0.1) * dt;
-    EyeSystem.lidSkinVelR *= 0.85;
-    EyeSystem.lidSkinDragR += EyeSystem.lidSkinVelR * dt;
-    // ENHANCED: Lower lid movement (squints, emotion-driven)
-    EyeSystem.lowerLidTargetL = EyeSystem.emotionalSquint * 0.4 + (speaking ? 0.05 : 0);
-    EyeSystem.lowerLidTargetR = EyeSystem.emotionalSquint * 0.4 + (speaking ? 0.05 : 0);
-    EyeSystem.lowerLidL = lerp(EyeSystem.lowerLidL, EyeSystem.lowerLidTargetL, 0.06 * dt);
-    EyeSystem.lowerLidR = lerp(EyeSystem.lowerLidR, EyeSystem.lowerLidTargetR, 0.06 * dt);
-    // ENHANCED: Crow's feet (linked to squint/smile)
-    EyeSystem.crinkleL = lerp(EyeSystem.crinkleL, EyeSystem.emotionalSquint * 0.7 + FACS.AU6 * 0.5, 0.05 * dt);
-    EyeSystem.crinkleR = lerp(EyeSystem.crinkleR, EyeSystem.emotionalSquint * 0.7 + FACS.AU6 * 0.5, 0.05 * dt);
-    // ENHANCED: Blink system with micro-blinks, partial blinks, asymmetry
-    EyeSystem.blinkTimer += dt;
-    const blinkInterval = speaking ? (60 + Math.random() * 100) : (80 + Math.random() * 250);
-    if (EyeSystem.blinkState === 'open' && EyeSystem.blinkTimer > EyeSystem.nextBlink) {
-        EyeSystem.blinkState = 'closing';
-        EyeSystem.blinkProgress = 0;
-        EyeSystem.nextBlink = blinkInterval;
-        EyeSystem.blinkTimer = 0;
-        EyeSystem.doubleBlink = Math.random() < EyeSystem.doubleBlinkChance;
-        EyeSystem.isPartialBlink = Math.random() < EyeSystem.partialBlinkChance;
-        // ENHANCED: Asymmetric blink timing
-        EyeSystem.blinkAsymmetryTarget = (Math.random() - 0.5) * 0.15;
-    }
-    EyeSystem.blinkAsymmetry = lerp(EyeSystem.blinkAsymmetry, EyeSystem.blinkAsymmetryTarget, 0.2 * dt);
-    if (EyeSystem.blinkState === 'closing' || EyeSystem.blinkState === 'opening') {
-        EyeSystem.blinkProgress += 0.08 * dt;
-        let blinkValL, blinkValR;
-        if (EyeSystem.isPartialBlink) {
-            blinkValL = getPartialBlinkCurve(Math.min(EyeSystem.blinkProgress, 1), 0.6);
-            blinkValR = getPartialBlinkCurve(Math.min(EyeSystem.blinkProgress + EyeSystem.blinkAsymmetry, 1), 0.6);
-        } else {
-            blinkValL = getBlinkCurve(Math.min(EyeSystem.blinkProgress, 1));
-            blinkValR = getBlinkCurve(Math.min(EyeSystem.blinkProgress + EyeSystem.blinkAsymmetry, 1));
-        }
-        EyeSystem.lidTargetL = blinkValL * (1 + EyeSystem.emotionalWiden - EyeSystem.emotionalSquint);
-        EyeSystem.lidTargetR = blinkValR * (1 + EyeSystem.emotionalWiden - EyeSystem.emotionalSquint);
-        if (EyeSystem.blinkProgress >= 1) {
-            if (EyeSystem.doubleBlink) {
-                EyeSystem.doubleBlink = false;
-                EyeSystem.blinkProgress = 0;
-            } else {
-                EyeSystem.blinkState = 'open';
-                EyeSystem.lidTargetL = 1 + EyeSystem.emotionalWiden - EyeSystem.emotionalSquint;
-                EyeSystem.lidTargetR = 1 + EyeSystem.emotionalWiden - EyeSystem.emotionalSquint;
-                EyeSystem.blinkAsymmetryTarget = 0;
-            }
-        }
-    }
-    // ENHANCED: Micro-blink system (very fast, barely perceptible)
-    EyeSystem.microBlinkTimer += dt;
-    if (EyeSystem.microBlinkTimer > EyeSystem.microBlinkInterval && EyeSystem.blinkState === 'open') {
-        EyeSystem.microBlinkTimer = 0;
-        EyeSystem.microBlinkInterval = 200 + Math.random() * 400;
-        if (Math.random() < 0.1) { // 10% chance
-            EyeSystem.microBlinkActive = true;
-            EyeSystem.microBlinkProgress = 0;
-        }
-    }
-    if (EyeSystem.microBlinkActive) {
-        EyeSystem.microBlinkProgress += 0.15 * dt;
-        const microVal = 1 - Math.sin(EyeSystem.microBlinkProgress * Math.PI) * EyeSystem.microBlinkIntensity;
-        EyeSystem.lidTargetL = Math.min(EyeSystem.lidTargetL, microVal);
-        if (EyeSystem.microBlinkProgress >= 1) EyeSystem.microBlinkActive = false;
-    }
-    // ENHANCED: Tear duct moisture
-    EyeSystem.tearDuctMoistureL = 0.3 + Math.sin(time * 0.3) * 0.1;
-    EyeSystem.tearDuctMoistureR = 0.3 + Math.sin(time * 0.35 + 1) * 0.1;
-    // Wet eye reflection + iris depth
-    EyeSystem.wetReflectionPhase += 0.02 * dt;
-    EyeSystem.wetnessPhase += 0.015 * dt;
-    EyeSystem.irisRotation += 0.002 * dt;
-    EyeSystem.irisDepthPhase += 0.01 * dt;
-    // Set gaze mode
-    if (speaking) EyeSystem.gazeMode = 'speaking';
-    else if (AnimState.currentState === 'listening') EyeSystem.gazeMode = 'listening';
-    else if (currentEmotion === 'thinking') EyeSystem.gazeMode = 'thinking';
-    else EyeSystem.gazeMode = 'idle';
-    SkinDeform.eyelidDragL = EyeSystem.lidSkinDragL;
-    SkinDeform.eyelidDragR = EyeSystem.lidSkinDragR;
-}
-
-
-/* ===================================================================
-   UPDATE: BROW + FOREHEAD (Enhanced with emphasis flash)
-   =================================================================== */
-function updateBrowSystem(dt) {
-    const speed = 0.07 * dt;
-    // ENHANCED: Spring-based brow movement for natural overshoot
-    const springForce = 0.08;
-    BrowSystem.innerLVel += (BrowSystem.innerLTarget - BrowSystem.innerL) * springForce;
-    BrowSystem.innerLVel *= 0.82;
-    BrowSystem.innerL += BrowSystem.innerLVel * dt;
-    BrowSystem.innerRVel += (BrowSystem.innerRTarget - BrowSystem.innerR) * springForce;
-    BrowSystem.innerRVel *= 0.82;
-    BrowSystem.innerR += BrowSystem.innerRVel * dt;
-    BrowSystem.outerLVel += (BrowSystem.outerLTarget - BrowSystem.outerL) * springForce;
-    BrowSystem.outerLVel *= 0.82;
-    BrowSystem.outerL += BrowSystem.outerLVel * dt;
-    BrowSystem.outerRVel += (BrowSystem.outerRTarget - BrowSystem.outerR) * springForce;
-    BrowSystem.outerRVel *= 0.82;
-    BrowSystem.outerR += BrowSystem.outerRVel * dt;
-    BrowSystem.compression = lerp(BrowSystem.compression, BrowSystem.compressionTarget, speed);
-    BrowSystem.tension = lerp(BrowSystem.tension, BrowSystem.tensionTarget, speed * 0.5);
-    const browRaise = (BrowSystem.innerL + BrowSystem.innerR + BrowSystem.outerL + BrowSystem.outerR) * 0.25;
-    for (let i = 0; i < 5; i++) {
-        BrowSystem.wrinkleTarget[i] = clamp(browRaise * (1 - i * 0.15) + BrowSystem.compression * 0.3, 0, 1);
-        BrowSystem.wrinkleLines[i] = lerp(BrowSystem.wrinkleLines[i], BrowSystem.wrinkleTarget[i], 0.05 * dt);
-    }
-    BrowSystem.foldDepth = BrowSystem.compression * 0.5 + browRaise * 0.3;
-    BrowSystem.innerLTarget = FACS.AU1 * 1.0 + FACS.AU4 * 0.6;
-    BrowSystem.innerRTarget = FACS.AU1 * 1.0 + FACS.AU4 * 0.6 + FACS.asymmetryBias * 2;
-    BrowSystem.outerLTarget = FACS.AU2 * 0.8;
-    BrowSystem.outerRTarget = FACS.AU2 * 0.8 + FACS.asymmetryBias;
-    BrowSystem.compressionTarget = FACS.AU4 * 0.8;
-    BrowSystem.tensionTarget = FACS.AU4 * 0.5 + FACS.AU7 * 0.3;
-    // ENHANCED: Speech-linked emphasis flash on brows
-    if (speaking) {
-        BrowSystem.speechMicroMovement = perlin1D(time * 3) * 0.05 * AudioLipSync.speechEmphasis;
-        BrowSystem.innerLTarget += BrowSystem.speechMicroMovement;
-        BrowSystem.innerRTarget += BrowSystem.speechMicroMovement * 0.8;
-        // Emphasis flash on stressed syllables
-        BrowSystem.emphasisFlashTarget = AudioLipSync.stressLevel * 0.4;
-    } else {
-        BrowSystem.emphasisFlashTarget = 0;
-    }
-    BrowSystem.emphasisFlash = lerp(BrowSystem.emphasisFlash, BrowSystem.emphasisFlashTarget, 0.15 * dt);
-    BrowSystem.innerLTarget += BrowSystem.emphasisFlash;
-    BrowSystem.outerLTarget += BrowSystem.emphasisFlash * 0.5;
-    BrowSystem.innerRTarget += BrowSystem.emphasisFlash * 0.9;
-    BrowSystem.outerRTarget += BrowSystem.emphasisFlash * 0.45;
-    // Corrugator furrow
-    BrowSystem.corrugatorTarget = FACS.AU4 * 0.7 + (currentEmotion === 'angry' ? 0.5 : 0);
-    BrowSystem.corrugatorDepth = lerp(BrowSystem.corrugatorDepth, BrowSystem.corrugatorTarget, 0.05 * dt);
-}
-
-/* ===================================================================
-   UPDATE: NOSE + CHEEK + SKIN (Enhanced nasolabial + dimples)
-   =================================================================== */
-function updateNoseCheek(dt) {
-    const speed = 0.06 * dt;
-    NoseSystem.breathInfluence = Math.sin(BodySystem.breathPhase) * 0.15 * BodySystem.breathDepth;
-    NoseSystem.nostrilFlareL = lerp(NoseSystem.nostrilFlareL, NoseSystem.nostrilFlareTarget + NoseSystem.breathInfluence, speed);
-    NoseSystem.nostrilFlareR = lerp(NoseSystem.nostrilFlareR, NoseSystem.nostrilFlareTarget + NoseSystem.breathInfluence, speed);
-    NoseSystem.wrinkle = lerp(NoseSystem.wrinkle, NoseSystem.wrinkleTarget, speed);
-    NoseSystem.nostrilFlareTarget = FACS.AU9 * 0.4 + FACS.AU25 * 0.1;
-    NoseSystem.wrinkleTarget = FACS.AU9 * 0.8;
-    // ENHANCED: Nose tip movement during speech
-    NoseSystem.tipTarget = speaking ? LipSync.current.jaw * 0.08 : 0;
-    NoseSystem.tipMovement = lerp(NoseSystem.tipMovement, NoseSystem.tipTarget, 0.1 * dt);
-    CheekSystem.puffL = lerp(CheekSystem.puffL, CheekSystem.puffTargetL, speed);
-    CheekSystem.puffR = lerp(CheekSystem.puffR, CheekSystem.puffTargetR, speed);
-    CheekSystem.blushIntensity = lerp(CheekSystem.blushIntensity, CheekSystem.blushTarget, 0.03 * dt);
-    CheekSystem.compressionL = FACS.AU6 * 0.8 + FACS.AU12 * 0.3;
-    CheekSystem.compressionR = FACS.AU6 * 0.8 + FACS.AU12 * 0.3;
-    CheekSystem.highlightL = CheekSystem.compressionL * 0.5;
-    CheekSystem.highlightR = CheekSystem.compressionR * 0.5;
-    const jawOpen = LipSync.current.jaw;
-    CheekSystem.stretchL = lerp(CheekSystem.stretchL, jawOpen * 0.3, 0.08 * dt);
-    CheekSystem.stretchR = lerp(CheekSystem.stretchR, jawOpen * 0.3, 0.08 * dt);
-    CheekSystem.jawDeformL = jawOpen * 2.5;
-    CheekSystem.jawDeformR = jawOpen * 2.5;
-    // ENHANCED: Nasolabial fold depth (deepens with smile and age)
-    CheekSystem.nasolabialTargetL = FACS.AU12 * 0.8 + FACS.AU6 * 0.3 + FACS.AU10 * 0.4;
-    CheekSystem.nasolabialTargetR = FACS.AU12 * 0.8 + FACS.AU6 * 0.3 + FACS.AU10 * 0.4;
-    CheekSystem.nasolabialL = lerp(CheekSystem.nasolabialL, CheekSystem.nasolabialTargetL, 0.06 * dt);
-    CheekSystem.nasolabialR = lerp(CheekSystem.nasolabialR, CheekSystem.nasolabialTargetR, 0.06 * dt);
-    // ENHANCED: Apple of cheek rises with smile
-    CheekSystem.appleHeightL = FACS.AU6 * 3 + FACS.AU12 * 2;
-    CheekSystem.appleHeightR = FACS.AU6 * 3 + FACS.AU12 * 2;
-    // Skin deformation
-    SkinDeform.chinFoldTarget = clamp(1 - jawOpen * 2, 0, 0.8) * (FACS.AU17 * 0.5 + 0.1);
-    SkinDeform.chinFold = lerp(SkinDeform.chinFold, SkinDeform.chinFoldTarget, 0.06 * dt);
-    const headYaw = Math.abs(BodySystem.neckRotY);
-    SkinDeform.neckTendonTargetL = clamp(BodySystem.neckRotY * 5, 0, 1);
-    SkinDeform.neckTendonTargetR = clamp(-BodySystem.neckRotY * 5, 0, 1);
-    SkinDeform.neckTendonL = lerp(SkinDeform.neckTendonL, SkinDeform.neckTendonTargetL, 0.05 * dt);
-    SkinDeform.neckTendonR = lerp(SkinDeform.neckTendonR, SkinDeform.neckTendonTargetR, 0.05 * dt);
-    SkinDeform.jawMuscleL = lerp(SkinDeform.jawMuscleL, FACS.AU28 * 0.5 + FACS.AU24 * 0.3, 0.07 * dt);
-    SkinDeform.jawMuscleR = lerp(SkinDeform.jawMuscleR, FACS.AU28 * 0.5 + FACS.AU24 * 0.3, 0.07 * dt);
-    // ENHANCED: Mentalis pucker
-    SkinDeform.mentalisPuckerTarget = FACS.AU17 * 0.6 + (currentEmotion === 'sad' ? 0.3 : 0);
-    SkinDeform.mentalisPucker = lerp(SkinDeform.mentalisPucker, SkinDeform.mentalisPuckerTarget, 0.05 * dt);
-    // ENHANCED: Platysma tension (visible in neck during strong emotions)
-    SkinDeform.platysmaTarget = (currentEmotion === 'angry' || currentEmotion === 'fearful') ? 0.4 : 0;
-    SkinDeform.platysmaTension = lerp(SkinDeform.platysmaTension, SkinDeform.platysmaTarget, 0.03 * dt);
-}
-
-
-/* ===================================================================
-   UPDATE: BODY + GESTURES (Enhanced hands, weight shift, emotion tilt)
-   =================================================================== */
-function updateBody(dt) {
-    BodySystem.breathPhase += BodySystem.breathRate * dt;
-    const breathNoise = perlin1D(time * 0.2) * 0.3;
-    BodySystem.chestExpand = Math.sin(BodySystem.breathPhase) * 3 * BodySystem.breathDepth * (1 + breathNoise);
-    BodySystem.torsoSwayPhase += BodySystem.torsoSwaySpeed * dt;
-    BodySystem.torsoSwayX = Math.sin(BodySystem.torsoSwayPhase * 0.7) * 1.5 + Math.sin(BodySystem.torsoSwayPhase * 1.3) * 0.5 + BodySystem.weightShift * 3;
-    BodySystem.torsoSwayY = Math.sin(BodySystem.torsoSwayPhase * 1.1) * 0.8;
-    BodySystem.shoulderL = lerp(BodySystem.shoulderL, BodySystem.shoulderLTarget + BodySystem.chestExpand * 0.3 + BodySystem.shoulderCompL + BodySystem.shoulderShrug, 0.05 * dt);
-    BodySystem.shoulderR = lerp(BodySystem.shoulderR, BodySystem.shoulderRTarget + BodySystem.chestExpand * 0.3 + BodySystem.shoulderCompR + BodySystem.shoulderShrug, 0.05 * dt);
-    BodySystem.shoulderCompL = -Math.abs(BodySystem.armR.shoulder) * 1.5;
-    BodySystem.shoulderCompR = -Math.abs(BodySystem.armL.shoulder) * 1.5;
-    const armSpeed = 0.06 * dt;
-    for (const arm of [BodySystem.armR, BodySystem.armL]) {
-        arm.shoulder = lerp(arm.shoulder, arm.shoulderTarget, armSpeed);
-        arm.elbow = lerp(arm.elbow, arm.elbowTarget, armSpeed);
-        arm.wrist = lerp(arm.wrist, arm.wristTarget, armSpeed);
-    }
-    // ENHANCED: Finger rest pose + speech articulation
-    if (speaking) {
-        BodySystem.fingerSpeechPhase += 0.05 * dt;
-        BodySystem.handExpressivenessTarget = 0.3 + AudioLipSync.speechEmphasis * 0.4;
-        for (let i = 0; i < 15; i++) {
-            const restVal = BodySystem.restPoseR[i];
-            const speechVal = Math.sin(BodySystem.fingerSpeechPhase + i * 0.5) * 0.15 * AudioLipSync.rmsSmoothed;
-            BodySystem.fingerTargetsR[i] = restVal + speechVal * BodySystem.handExpressiveness;
-            BodySystem.fingersR[i] = lerp(BodySystem.fingersR[i], BodySystem.fingerTargetsR[i], 0.06 * dt);
-        }
-    } else {
-        BodySystem.handExpressivenessTarget = 0;
-        for (let i = 0; i < 15; i++) {
-            BodySystem.fingerTargetsR[i] = BodySystem.restPoseR[i];
-            BodySystem.fingersR[i] = lerp(BodySystem.fingersR[i], BodySystem.fingerTargetsR[i], 0.03 * dt);
-            BodySystem.fingerTargetsL[i] = BodySystem.restPoseL[i];
-            BodySystem.fingersL[i] = lerp(BodySystem.fingersL[i], BodySystem.fingerTargetsL[i], 0.03 * dt);
-        }
-    }
-    BodySystem.handExpressiveness = lerp(BodySystem.handExpressiveness, BodySystem.handExpressivenessTarget, 0.04 * dt);
-    // Head bob during speech
-    if (speaking) {
-        BodySystem.headBobPhase += 0.06 * dt * (1 + AudioLipSync.speechEmphasis * 0.5);
-        BodySystem.headBobIntensity = lerp(BodySystem.headBobIntensity, 0.6 + AudioLipSync.speechEmphasis * 0.4, 0.03 * dt);
-    } else {
-        BodySystem.headBobIntensity = lerp(BodySystem.headBobIntensity, 0, 0.05 * dt);
-    }
-    BodySystem.headNod = lerp(BodySystem.headNod, BodySystem.headNodTarget, 0.08 * dt);
-    // Head inertia
-    const headTargetX = BodySystem.neckTargetX + Math.sin(BodySystem.headBobPhase) * BodySystem.headBobIntensity * 0.02;
-    const headTargetY = BodySystem.neckTargetY + Math.sin(BodySystem.headBobPhase * 0.7) * BodySystem.headBobIntensity * 0.015;
-    const headForceX = (headTargetX - BodySystem.headInertiaX) * 0.08;
-    const headForceY = (headTargetY - BodySystem.headInertiaY) * 0.08;
-    BodySystem.headVelX = (BodySystem.headVelX + headForceX) * BodySystem.headDamping;
-    BodySystem.headVelY = (BodySystem.headVelY + headForceY) * BodySystem.headDamping;
-    BodySystem.headInertiaX += BodySystem.headVelX * dt;
-    BodySystem.headInertiaY += BodySystem.headVelY * dt;
-    BodySystem.neckWeightTarget = Math.abs(BodySystem.neckRotX) * 0.5 + 0.02;
-    BodySystem.neckWeightSag = lerp(BodySystem.neckWeightSag, BodySystem.neckWeightTarget, 0.03 * dt);
-    BodySystem.neckRotX = lerp(BodySystem.neckRotX, BodySystem.neckTargetX + BodySystem.headInertiaX, 0.04 * dt);
-    BodySystem.neckRotY = lerp(BodySystem.neckRotY, BodySystem.neckTargetY + BodySystem.headInertiaY, 0.04 * dt);
-    BodySystem.neckRotZ = lerp(BodySystem.neckRotZ, BodySystem.neckTargetZ + BodySystem.emotionalHeadTilt, 0.04 * dt);
-    // Micro head movements
-    BodySystem.microHeadPhaseX += 0.013 * dt;
-    BodySystem.microHeadPhaseY += 0.017 * dt;
-    BodySystem.microHeadPhaseZ += 0.011 * dt;
-    BodySystem.microHeadX = perlin1D(BodySystem.microHeadPhaseX) * 0.008;
-    BodySystem.microHeadY = perlin1D(BodySystem.microHeadPhaseY) * 0.006;
-    BodySystem.microHeadZ = perlin1D(BodySystem.microHeadPhaseZ) * 0.004;
-    // ENHANCED: Emotional head tilt
-    if (currentEmotion === 'sad' || currentEmotion === 'love') BodySystem.emotionalHeadTiltTarget = 0.04;
-    else if (currentEmotion === 'thinking') BodySystem.emotionalHeadTiltTarget = -0.03;
-    else if (currentEmotion === 'confident') BodySystem.emotionalHeadTiltTarget = -0.02;
-    else BodySystem.emotionalHeadTiltTarget = 0;
-    BodySystem.emotionalHeadTilt = lerp(BodySystem.emotionalHeadTilt, BodySystem.emotionalHeadTiltTarget, 0.02 * dt);
-    // ENHANCED: Weight shift
-    BodySystem.weightShiftTimer += dt;
-    if (BodySystem.weightShiftTimer > BodySystem.weightShiftInterval) {
-        BodySystem.weightShiftTimer = 0;
-        BodySystem.weightShiftInterval = 300 + Math.random() * 400;
-        BodySystem.weightShiftTarget = (Math.random() - 0.5) * 0.4;
-    }
-    BodySystem.weightShift = lerp(BodySystem.weightShift, BodySystem.weightShiftTarget, 0.01 * dt);
-    // ENHANCED: Shoulder shrug during speech emphasis
-    BodySystem.shoulderShrugTarget = speaking ? AudioLipSync.stressLevel * 2 : 0;
-    BodySystem.shoulderShrug = lerp(BodySystem.shoulderShrug, BodySystem.shoulderShrugTarget, 0.08 * dt);
-    // Gesture system
-    if (BodySystem.currentGesture) {
-        BodySystem.gestureProgress += BodySystem.gestureSpeed * dt;
-        if (BodySystem.gestureProgress >= 1) { BodySystem.currentGesture = null; BodySystem.gestureProgress = 0; }
-        else applyGestureKeyframe(BodySystem.currentGesture, BodySystem.gestureProgress);
-    }
-    // Conversational gestures during speech
-    if (speaking && !BodySystem.currentGesture) {
-        BodySystem.conversationalGestureTimer += dt;
-        if (BodySystem.conversationalGestureTimer > BodySystem.conversationalGestureInterval) {
-            BodySystem.conversationalGestureTimer = 0;
-            BodySystem.conversationalGestureInterval = 100 + Math.random() * 180;
-            const gestureNames = ['explain', 'explain_both', 'open_palm', 'nod', 'tilt_right', 'emphasis_right', 'count_fingers'];
-            triggerGesture(gestureNames[Math.floor(Math.random() * gestureNames.length)]);
-        }
-    }
-    // Idle movements
-    BodySystem.idleTimer += dt;
-    if (BodySystem.idleTimer > BodySystem.nextIdle && !speaking && !BodySystem.currentGesture) {
-        BodySystem.idleTimer = 0;
-        BodySystem.nextIdle = 150 + Math.random() * 300;
-        BodySystem.neckTargetY = (Math.random() - 0.5) * 0.06;
-        BodySystem.neckTargetZ = (Math.random() - 0.5) * 0.03;
-        if (Math.random() < 0.3) triggerGesture('nod');
-        if (Math.random() < 0.1) triggerGesture('thinking_pose');
-    }
-    // Swallowing
-    BodySystem.swallowTimer += dt;
-    if (BodySystem.swallowTimer > BodySystem.nextSwallow && !speaking) {
-        BodySystem.swallowTimer = 0; BodySystem.nextSwallow = 400 + Math.random() * 600;
-        BodySystem.swallowActive = true; BodySystem.swallowProgress = 0;
-    }
-    if (BodySystem.swallowActive) { BodySystem.swallowProgress += 0.04 * dt; if (BodySystem.swallowProgress >= 1) BodySystem.swallowActive = false; }
-    // Lip moistening
-    BodySystem.lipMoistenTimer += dt;
-    if (BodySystem.lipMoistenTimer > BodySystem.nextLipMoisten && !speaking) {
-        BodySystem.lipMoistenTimer = 0; BodySystem.nextLipMoisten = 600 + Math.random() * 800;
-        BodySystem.lipMoistenActive = true; BodySystem.lipMoistenProgress = 0;
-    }
-    if (BodySystem.lipMoistenActive) { BodySystem.lipMoistenProgress += 0.025 * dt; if (BodySystem.lipMoistenProgress >= 1) BodySystem.lipMoistenActive = false; }
-}
-
-function applyGestureKeyframe(gesture, progress) {
-    const kf = gesture.keyframes;
-    let prev = kf[0], next = kf[kf.length - 1];
-    for (let i = 0; i < kf.length - 1; i++) {
-        if (progress >= kf[i].t && progress <= kf[i + 1].t) { prev = kf[i]; next = kf[i + 1]; break; }
-    }
-    const localT = (progress - prev.t) / (next.t - prev.t || 1);
-    const easedT = easeInOutQuad(localT);
-    if (prev.armR && next.armR) {
-        BodySystem.armR.shoulderTarget = lerp(prev.armR.shoulder, next.armR.shoulder, easedT);
-        BodySystem.armR.elbowTarget = lerp(prev.armR.elbow, next.armR.elbow, easedT);
-        BodySystem.armR.wristTarget = lerp(prev.armR.wrist, next.armR.wrist, easedT);
-    }
-    if (prev.armL && next.armL) {
-        BodySystem.armL.shoulderTarget = lerp(prev.armL.shoulder, next.armL.shoulder, easedT);
-        BodySystem.armL.elbowTarget = lerp(prev.armL.elbow, next.armL.elbow, easedT);
-        BodySystem.armL.wristTarget = lerp(prev.armL.wrist, next.armL.wrist, easedT);
-    }
-    if ('headNod' in prev && 'headNod' in next) BodySystem.headNodTarget = lerp(prev.headNod, next.headNod, easedT);
-}
-
-function triggerGesture(name) {
-    if (GESTURES[name] && !BodySystem.currentGesture) {
-        BodySystem.currentGesture = GESTURES[name];
-        BodySystem.gestureProgress = 0;
-        BodySystem.gestureSpeed = 1 / GESTURES[name].duration;
-    }
-}
-
-
-/* ===================================================================
-   UPDATE: PHYSICS ENGINE (Enhanced with ear lobes, soft tissue)
-   =================================================================== */
-function updatePhysics(dt) {
-    const headVelX = BodySystem.torsoSwayX - Physics.prevHeadX;
-    const headVelY = (Math.sin(BodySystem.headBobPhase) * BodySystem.headBobIntensity * 2) - Physics.prevHeadY;
-    Physics.prevHeadX = BodySystem.torsoSwayX;
-    Physics.prevHeadY = Math.sin(BodySystem.headBobPhase) * BodySystem.headBobIntensity * 2;
-    // Hair physics
-    for (const strand of Physics.hairStrands) {
-        const restX = strand.baseX + Math.sin(time * 0.5 + strand.baseX * 0.1) * 2;
-        const restY = strand.baseY + strand.length;
-        const springForceX = (restX - strand.tipX) * strand.stiffness;
-        const springForceY = (restY - strand.tipY) * strand.stiffness;
-        strand.velX += springForceX - headVelX * 0.8 + (Math.random() - 0.5) * 0.08;
-        strand.velY += springForceY + Physics.hairGravity - headVelY * 0.5;
-        strand.velX *= strand.damping; strand.velY *= strand.damping;
-        strand.tipX += strand.velX * dt; strand.tipY += strand.velY * dt;
-        const midRestX = (strand.baseX + strand.tipX) * 0.5;
-        const midRestY = (strand.baseY + strand.tipY) * 0.5 + strand.length * 0.3;
-        strand.midVelX += (midRestX - strand.midX) * strand.stiffness * 1.5 - headVelX * 0.4;
-        strand.midVelY += (midRestY - strand.midY) * strand.stiffness * 1.5;
-        strand.midVelX *= strand.damping * 0.95; strand.midVelY *= strand.damping * 0.95;
-        strand.midX += strand.midVelX * dt; strand.midY += strand.midVelY * dt;
-    }
-    // Cheek jiggle
-    const jawAccel = LipSync.current.jaw > 0.1 ? LipSync.current.jaw * 3 : 0;
-    Physics.cheekJiggleVel += (-Physics.cheekJiggle * 0.12 - Physics.cheekJiggleVel * 0.82 + jawAccel * 0.015);
-    Physics.cheekJiggle += Physics.cheekJiggleVel * dt;
-    // Jaw recoil
-    Physics.jawRecoilVel += (-Physics.jawRecoil * 0.2 - Physics.jawRecoilVel * 0.75 + (AudioLipSync.jawVelocity || LipSync.jawVelocity) * 0.1);
-    Physics.jawRecoil += Physics.jawRecoilVel * dt;
-    // Lip bounce
-    const lipForce = LipSync.current.jaw * 0.5;
-    Physics.lipBounceUVel += (-Physics.lipBounceU * 0.15 - Physics.lipBounceUVel * 0.8 + lipForce * 0.02);
-    Physics.lipBounceU += Physics.lipBounceUVel * dt;
-    Physics.lipBounceLVel += (-Physics.lipBounceL * 0.12 - Physics.lipBounceLVel * 0.78 + lipForce * 0.025);
-    Physics.lipBounceL += Physics.lipBounceLVel * dt;
-    // Tongue physics
-    Physics.tongueCurl = lerp(Physics.tongueCurl, Physics.tongueCurlTarget, 0.1 * dt);
-    Physics.tongueCurlTarget = LipSync.current.tongue * 0.5;
-    const tongueTarget = LipSync.current.tongue > 0.3 ? LipSync.current.tongue : 0;
-    Physics.tongueVelX += (0 - Physics.tongueX * 0.1) * dt;
-    Physics.tongueVelY += ((tongueTarget * 5) - Physics.tongueY * 0.08) * dt;
-    Physics.tongueVelX *= 0.88; Physics.tongueVelY *= 0.88;
-    Physics.tongueX += Physics.tongueVelX * dt; Physics.tongueY += Physics.tongueVelY * dt;
-    // Cloth/collar
-    const torsoAccel = BodySystem.torsoSwayX * 0.5;
-    Physics.clothVel += (torsoAccel - Physics.clothOffset * Physics.clothStiffness - Physics.clothVel * Physics.clothDamping * 0.1);
-    Physics.clothVel *= Physics.clothDamping; Physics.clothOffset += Physics.clothVel * dt;
-    Physics.neckTension = Math.abs(BodySystem.neckRotY) * 2 + Math.abs(BodySystem.neckRotZ) * 1.5;
-    Physics.skinBounceVel += (-Physics.skinBounce * 0.15 - Physics.skinBounceVel * 0.8);
-    Physics.skinBounce += Physics.skinBounceVel * dt;
-    // ENHANCED: Ear lobe physics (secondary motion)
-    Physics.earLobeVelL += (-Physics.earLobeL * 0.1 - Physics.earLobeVelL * 0.85 + headVelY * 0.3);
-    Physics.earLobeL += Physics.earLobeVelL * dt;
-    Physics.earLobeVelR += (-Physics.earLobeR * 0.1 - Physics.earLobeVelR * 0.85 + headVelY * 0.3);
-    Physics.earLobeR += Physics.earLobeVelR * dt;
-    // ENHANCED: Soft tissue momentum (chin/jaw area)
-    Physics.softTissueVel += (-Physics.softTissueMomentum * 0.12 - Physics.softTissueVel * 0.8 + headVelY * 0.15);
-    Physics.softTissueMomentum += Physics.softTissueVel * dt;
-}
-
-/* ===================================================================
-   UPDATE: PARTICLES
-   =================================================================== */
-function updateParticles(dt) {
-    particles = particles.filter(p => {
-        p.life -= dt; p.x += (p.vx || 0) * dt; p.y += (p.vy || 0) * dt;
-        if (p.type === 'tear') { p.vy += 0.05 * dt; p.alpha -= 0.008 * dt; }
-        if (p.type === 'heart') { p.vy -= 0.02 * dt; p.alpha -= 0.01 * dt; p.size *= 0.998; }
-        if (p.type === 'sparkle') { p.alpha -= 0.02 * dt; p.size *= 0.99; }
-        return p.life > 0 && p.alpha > 0;
-    });
-}
-
-function emitParticle(type, x, y) {
-    if (type === 'tear') { particles.push({ type, x, y, vx: (Math.random()-0.5)*0.3, vy: 0.5, alpha: 0.9, life: 80, size: 4 }); }
-    else if (type === 'heart') { for (let i = 0; i < 3; i++) particles.push({ type, x: x + (Math.random()-0.5)*40, y: y + Math.random()*20, vx: (Math.random()-0.5)*0.5, vy: -0.8 - Math.random()*0.5, alpha: 1, life: 60 + Math.random()*30, size: 10 + Math.random()*8 }); }
-    else if (type === 'sparkle') { for (let i = 0; i < 5; i++) particles.push({ type, x: x + (Math.random()-0.5)*60, y: y + (Math.random()-0.5)*60, vx: (Math.random()-0.5)*0.8, vy: (Math.random()-0.5)*0.8, alpha: 1, life: 40 + Math.random()*20, size: 3 + Math.random()*4 }); }
-}
-
-
-/* ===================================================================
-   EMOTION SYSTEM (Enhanced with transitions and micro-expressions)
-   =================================================================== */
-function setEmotion(emo) {
-    if (!FACS_EMOTIONS[emo]) emo = 'neutral';
-    currentEmotion = emo;
-    const preset = FACS_EMOTIONS[emo];
-    for (const [k, v] of Object.entries(preset)) { FACS.targets[k] = v; }
-    if (emo === 'surprised' || emo === 'fearful') {
-        EyeSystem.emotionalWiden = 0.3; EyeSystem.emotionalSquint = 0; EyeSystem.pupilDilationTarget = 1.3;
-    } else if (emo === 'happy' || emo === 'love') {
-        EyeSystem.emotionalSquint = 0.15; EyeSystem.emotionalWiden = 0; EyeSystem.pupilDilationTarget = 1.1;
-    } else if (emo === 'angry' || emo === 'disgusted') {
-        EyeSystem.emotionalSquint = 0.25; EyeSystem.emotionalWiden = 0; EyeSystem.pupilDilationTarget = 0.85;
-    } else {
-        EyeSystem.emotionalSquint = 0; EyeSystem.emotionalWiden = 0; EyeSystem.pupilDilationTarget = 1.0;
-    }
-    CheekSystem.blushTarget = (emo === 'love') ? 0.7 : (emo === 'happy') ? 0.3 : 0;
-    CheekSystem.blushColor = (emo === 'love') ? [255, 100, 130] : [240, 140, 120];
-    NoseSystem.nostrilFlareTarget = (emo === 'angry') ? 0.6 : (emo === 'disgusted') ? 0.4 : 0;
-    BodySystem.breathRate = (emo === 'fearful' || emo === 'angry') ? 0.04 : (emo === 'sad') ? 0.018 : 0.025;
-    BodySystem.breathDepth = (emo === 'fearful') ? 1.5 : (emo === 'sad') ? 0.7 : 1.0;
-    BodySystem.shoulderLTarget = (emo === 'fearful') ? 5 : (emo === 'sad') ? -3 : 0;
-    BodySystem.shoulderRTarget = BodySystem.shoulderLTarget;
-    if (emo === 'sad') emitParticle('tear', CX - 40, 200);
-    if (emo === 'love') emitParticle('heart', CX, 160);
-    if (emo === 'happy') emitParticle('sparkle', CX, 180);
-    const disp = document.getElementById('emotionDisplay');
-    if (disp) disp.textContent = 'EMOTION: ' + emo.toUpperCase();
-    if (emo === 'surprised') triggerGesture('shrug');
-    if (emo === 'confident') triggerGesture('explain');
-    if (emo === 'thinking') triggerGesture('thinking_pose');
-    AudioLipSync.emotionalIntensity = (emo === 'happy' || emo === 'surprised' || emo === 'angry') ? 0.4 : 0.1;
-}
-
-/* ===================================================================
-   DRAWING: SHADING UTILITIES
-   =================================================================== */
-function createSkinGradient(c, x, y, r, baseColor, shadowColor, highlightColor) {
-    const g = c.createRadialGradient(x - r * 0.2, y - r * 0.3, r * 0.1, x, y, r);
-    g.addColorStop(0, `rgb(${highlightColor.join(',')})`);
-    g.addColorStop(0.4, `rgb(${baseColor.join(',')})`);
-    g.addColorStop(0.85, `rgb(${shadowColor.join(',')})`);
-    g.addColorStop(1, `rgba(${shadowColor.join(',')},0.8)`);
-    return g;
-}
-
-function drawSubsurfaceScatter(c, x, y, radius, intensity) {
-    c.save(); c.globalAlpha = intensity * Shading.sssIntensity;
-    const g = c.createRadialGradient(x, y, 0, x, y, radius);
-    const [r, gr, b] = Shading.sssColor;
-    g.addColorStop(0, `rgba(${r},${gr},${b},0.4)`);
-    g.addColorStop(0.5, `rgba(${r},${gr},${b},0.15)`);
-    g.addColorStop(1, 'rgba(255,200,180,0)');
-    c.fillStyle = g; c.beginPath(); c.arc(x, y, radius, 0, Math.PI * 2); c.fill(); c.restore();
-}
-
-function drawRimLight(c, x, y, w, h, angle) {
-    c.save();
-    const breathMod = 1 + Math.sin(Shading.lightBreathPhase) * Shading.lightBreathIntensity;
-    c.globalAlpha = Shading.rimLightIntensity * 0.6 * breathMod;
-    const [r, g, b] = Shading.rimLightColor;
-    const rimG = c.createLinearGradient(x + Math.cos(angle) * w, y, x + Math.cos(angle) * w * 0.7, y);
-    rimG.addColorStop(0, `rgba(${r},${g},${b},0.5)`); rimG.addColorStop(1, 'rgba(0,0,0,0)');
-    c.fillStyle = rimG; c.beginPath(); c.ellipse(x, y, w, h, 0, 0, Math.PI * 2); c.fill(); c.restore();
-}
-
-function drawAmbientOcclusion(c, x, y, w, h, intensity) {
-    c.save(); c.globalAlpha = intensity * Shading.aoIntensity;
-    const g = c.createRadialGradient(x, y, w * 0.3, x, y, w);
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.7, 'rgba(40,20,10,0.2)'); g.addColorStop(1, 'rgba(30,15,5,0.4)');
-    c.fillStyle = g; c.beginPath(); c.ellipse(x, y, w, h, 0, 0, Math.PI * 2); c.fill(); c.restore();
-}
-
-function drawSkinPores(c, x, y, w, h) {
-    c.save(); c.globalAlpha = 0.035;
-    for (let i = 0; i < Shading.poreDensity; i++) {
-        const px = x + (Math.random() - 0.5) * w * 2; const py = y + (Math.random() - 0.5) * h * 2;
-        c.fillStyle = `rgba(120,80,50,${0.3 + Math.random() * 0.4})`;
-        c.beginPath(); c.arc(px, py, Shading.poreSize * (0.5 + Math.random() * 0.5), 0, Math.PI * 2); c.fill();
-    }
-    c.restore();
-}
-
-
-/* ===================================================================
-   DRAWING: EYES (Enhanced with crow's feet, lower lid, tear duct)
-   =================================================================== */
-function drawRealisticEye(c, ex, ey, isLeft) {
-    const lidOpen = isLeft ? EyeSystem.lidOpenL : EyeSystem.lidOpenR;
-    const skinDrag = isLeft ? SkinDeform.eyelidDragL : SkinDeform.eyelidDragR;
-    const lowerLid = isLeft ? EyeSystem.lowerLidL : EyeSystem.lowerLidR;
-    const crinkle = isLeft ? EyeSystem.crinkleL : EyeSystem.crinkleR;
-    const pupilX = EyeSystem.gazeX + EyeSystem.saccadeX + EyeSystem.irisTremorX;
-    const pupilY = EyeSystem.gazeY + EyeSystem.saccadeY + EyeSystem.irisTremorY;
-    const eyeW = 24, eyeH = 16 * clamp(lidOpen, 0.05, 1.4);
-    if (eyeH < 1) return;
-    c.save();
-    drawAmbientOcclusion(c, ex, ey, eyeW + 8, eyeH + 10, 0.6);
-    // Sclera
-    c.beginPath(); c.ellipse(ex, ey, eyeW, eyeH, 0, 0, Math.PI * 2);
-    const whiteG = c.createRadialGradient(ex - 3, ey - 2, 2, ex, ey, eyeW);
-    whiteG.addColorStop(0, '#ffffff'); whiteG.addColorStop(0.6, '#fdfcfa');
-    whiteG.addColorStop(0.85, '#f5ede5'); whiteG.addColorStop(1, '#e8d8cc');
-    c.fillStyle = whiteG; c.fill();
-    c.save(); c.clip();
-    // Blood vessels
-    c.globalAlpha = 0.05; c.strokeStyle = '#cc5544'; c.lineWidth = 0.3;
-    for (let i = 0; i < 5; i++) {
-        const sx = ex + (isLeft ? -eyeW + 3 : eyeW - 3);
-        c.beginPath(); c.moveTo(sx, ey + (i - 2.5) * 2.5);
-        c.bezierCurveTo(sx + (isLeft ? 7 : -7), ey + (i - 2) * 1.8, ex + (isLeft ? -4 : 4), ey + (i - 1.5) * 1.2, ex, ey);
-        c.stroke();
-    }
-    c.globalAlpha = 1;
-    // Iris
-    const irisX = ex + pupilX * 5; const irisY = ey + pupilY * 3.5;
-    const irisR = 12 * EyeSystem.pupilDilation;
-    c.beginPath(); c.arc(irisX, irisY, irisR + 1.5, 0, Math.PI * 2);
-    c.fillStyle = 'rgba(8,20,40,0.3)'; c.fill();
-    const irisG = c.createRadialGradient(irisX - 1, irisY - 1, 1, irisX, irisY, irisR);
-    irisG.addColorStop(0, '#7cb8e0'); irisG.addColorStop(0.2, '#4a90c4');
-    irisG.addColorStop(0.5, '#2d6fa8'); irisG.addColorStop(0.75, '#1a4d80');
-    irisG.addColorStop(0.9, '#0f3358'); irisG.addColorStop(1, '#081e38');
-    c.beginPath(); c.arc(irisX, irisY, irisR, 0, Math.PI * 2); c.fillStyle = irisG; c.fill();
-    // Iris fibers
-    c.globalAlpha = 0.18;
-    for (let a = 0; a < Math.PI * 2; a += 0.18) {
-        const r1 = irisR * 0.3, r2 = irisR * 0.92;
-        c.beginPath();
-        c.moveTo(irisX + Math.cos(a + EyeSystem.irisRotation) * r1, irisY + Math.sin(a + EyeSystem.irisRotation) * r1);
-        c.lineTo(irisX + Math.cos(a + 0.04 + EyeSystem.irisRotation) * r2, irisY + Math.sin(a + 0.04 + EyeSystem.irisRotation) * r2);
-        c.strokeStyle = '#1a4a70'; c.lineWidth = 0.5; c.stroke();
-    }
-    c.globalAlpha = 0.1;
-    for (let i = 0; i < 7; i++) {
-        const ca = (i / 7) * Math.PI * 2 + EyeSystem.irisDepthPhase;
-        const cr = irisR * (0.4 + Math.random() * 0.3);
-        c.fillStyle = '#6ab0d8';
-        c.beginPath(); c.arc(irisX + Math.cos(ca) * cr, irisY + Math.sin(ca) * cr, 1.5, 0, Math.PI * 2); c.fill();
-    }
-    c.globalAlpha = 1;
-    // Pupil
-    const pupR = 5 * EyeSystem.pupilDilation;
-    const pupG = c.createRadialGradient(irisX, irisY, 0, irisX, irisY, pupR);
-    pupG.addColorStop(0, '#000000'); pupG.addColorStop(0.7, '#030308'); pupG.addColorStop(1, '#0a0a15');
-    c.beginPath(); c.arc(irisX, irisY, pupR, 0, Math.PI * 2); c.fillStyle = pupG; c.fill();
-    // Corneal reflections
-    c.beginPath(); c.ellipse(irisX - 4, irisY - 4, 3.5, 2.8, -0.3, 0, Math.PI * 2);
-    c.fillStyle = 'rgba(255,255,255,0.92)'; c.fill();
-    c.beginPath(); c.arc(irisX + 3, irisY + 2.5, 1.5, 0, Math.PI * 2);
-    c.fillStyle = 'rgba(255,255,255,0.5)'; c.fill();
-    // Wet eye moisture
-    const wetPhase = EyeSystem.wetnessPhase + (isLeft ? 0 : 1.5);
-    c.globalAlpha = EyeSystem.wetnessIntensity * (0.3 + Math.sin(wetPhase) * 0.12);
-    c.strokeStyle = 'rgba(255,255,255,0.45)'; c.lineWidth = 1.3;
-    c.beginPath(); c.ellipse(ex, ey + eyeH * 0.7, eyeW * 0.85, 3, 0, 0.2, Math.PI - 0.2); c.stroke();
-    c.globalAlpha = 0.2;
-    c.beginPath(); c.ellipse(ex, ey - eyeH * 0.8, eyeW * 0.7, 2, 0, 0.4, Math.PI - 0.4); c.stroke();
-    // ENHANCED: Tear duct moisture pooling
-    const tearMoisture = isLeft ? EyeSystem.tearDuctMoistureL : EyeSystem.tearDuctMoistureR;
-    c.globalAlpha = tearMoisture * 0.25;
-    c.fillStyle = 'rgba(255,255,255,0.5)';
-    const tearX = isLeft ? ex + eyeW - 5 : ex - eyeW + 5;
-    c.beginPath(); c.ellipse(tearX, ey + 2, 3, 2.5, 0, 0, Math.PI * 2); c.fill();
-    c.globalAlpha = 1;
-    c.restore(); // Unclip
-    // ENHANCED: Lower lid line (moves up with squint)
-    c.strokeStyle = `rgba(140,90,60,${0.15 + lowerLid * 0.2})`;
-    c.lineWidth = 0.8;
-    c.beginPath();
-    c.ellipse(ex, ey + eyeH * (1 - lowerLid * 0.3), eyeW - 2, 3 + lowerLid * 4, 0, 0.3, Math.PI - 0.3);
-    c.stroke();
-    // Eyelid outline with skin drag
-    c.strokeStyle = 'rgba(120,80,55,0.35)'; c.lineWidth = 1;
-    c.beginPath(); c.ellipse(ex, ey + skinDrag * 2, eyeW + 1, eyeH + 1, 0, 0, Math.PI * 2); c.stroke();
-    // Upper eyelid crease
-    c.strokeStyle = 'rgba(140,90,60,0.25)'; c.lineWidth = 0.9;
-    c.beginPath(); c.ellipse(ex, ey - eyeH - 5 + skinDrag * 3, eyeW + 3, 7, 0, 0.25, Math.PI - 0.25); c.stroke();
-    // ENHANCED: Crow's feet (eye corner wrinkles)
-    if (crinkle > 0.1) {
-        c.strokeStyle = `rgba(160,110,70,${crinkle * 0.15})`;
-        c.lineWidth = 0.5;
-        const side = isLeft ? -1 : 1;
-        for (let i = 0; i < 3; i++) {
-            const startX = ex + side * (eyeW + 4);
-            const startY = ey - 4 + i * 5;
-            c.beginPath();
-            c.moveTo(startX, startY);
-            c.lineTo(startX + side * (5 + i), startY + (i - 1) * 2);
-            c.stroke();
-        }
-    }
-    // Eyelashes
-    c.strokeStyle = '#1a0e08'; c.lineCap = 'round';
-    for (let i = -4; i <= 4; i++) {
-        const lx = ex + i * (eyeW / 5); const baseY = ey - eyeH + 1;
-        const len = 6 + Math.abs(i < 0 ? i + 1 : i - 1) * 0.5 + (isLeft ? (i < 0 ? 2 : 0) : (i > 0 ? 2 : 0));
-        c.lineWidth = 1.3 - Math.abs(i) * 0.08;
-        c.beginPath(); c.moveTo(lx, baseY);
-        c.quadraticCurveTo(lx + i * 0.8, baseY - len * 0.6, lx + i * 1.5, baseY - len); c.stroke();
-    }
-    c.lineWidth = 0.6;
-    for (let i = -3; i <= 3; i++) {
-        const lx = ex + i * (eyeW / 4);
-        c.beginPath(); c.moveTo(lx, ey + eyeH - 1); c.lineTo(lx + i * 0.4, ey + eyeH + 3); c.stroke();
-    }
-    drawSubsurfaceScatter(c, ex, ey - eyeH - 2, 15, 0.2);
-    c.restore();
-}
-
-
-/* ===================================================================
-   DRAWING: MOUTH (Enhanced with dimples, deeper nasolabial)
-   =================================================================== */
-function drawRealisticMouth(c, mx, my) {
-    const ls = LipSync.current;
-    const jawOpen = ls.jaw; const wide = ls.wide; const round = ls.round;
-    const tongueVis = ls.tongue; const teethVis = ls.teeth;
-    const smile = FACS.AU12 * 0.8;
-    const lipBounceU = Physics.lipBounceU; const lipBounceL = Physics.lipBounceL;
-    const lipCornerL = AudioLipSync.lipCornerL; const lipCornerR = AudioLipSync.lipCornerR;
-    const mWidth = 30 + Math.abs(wide) * 12 + smile * 10 - round * 8 - SkinDeform.lipCompressionUpper * 5;
-    const mHeight = 5 + jawOpen * 28;
-    const cornerLift = smile * 10;
-    Shading.mouthShadowDepth = jawOpen * 0.5;
-    // Mouth interior
-    if (jawOpen > 0.05) {
-        c.save();
-        c.beginPath();
-        c.moveTo(mx - mWidth, my - cornerLift);
-        c.bezierCurveTo(mx - mWidth * 0.5, my - mHeight * 0.4, mx + mWidth * 0.5, my - mHeight * 0.4, mx + mWidth, my - cornerLift);
-        c.bezierCurveTo(mx + mWidth * 0.5, my + mHeight * 0.6, mx - mWidth * 0.5, my + mHeight * 0.6, mx - mWidth, my - cornerLift);
-        c.closePath();
-        const mouthG = c.createRadialGradient(mx, my + mHeight * 0.3, 2, mx, my, mWidth * 1.2);
-        mouthG.addColorStop(0, '#0d0205'); mouthG.addColorStop(0.3, '#1a0508');
-        mouthG.addColorStop(0.6, '#2d0a12'); mouthG.addColorStop(1, '#4a1520');
-        c.fillStyle = mouthG; c.fill(); c.clip();
-        // Inner mouth walls
-        c.globalAlpha = 0.3;
-        const wallG = c.createLinearGradient(mx - mWidth, my, mx + mWidth, my);
-        wallG.addColorStop(0, '#6a2030'); wallG.addColorStop(0.3, '#3a0a12');
-        wallG.addColorStop(0.7, '#3a0a12'); wallG.addColorStop(1, '#6a2030');
-        c.fillStyle = wallG; c.fillRect(mx - mWidth, my - mHeight * 0.3, mWidth * 2, mHeight * 0.8);
-        c.globalAlpha = 1;
-        // Teeth
-        if (teethVis > 0.1) {
-            c.globalAlpha = clamp(teethVis, 0, 1);
-            const teethY = my - cornerLift - 1; const teethH = 7 + jawOpen * 4;
-            c.fillStyle = '#c05060';
-            c.beginPath(); c.ellipse(mx, teethY - 2, mWidth * 0.7, 4, 0, 0, Math.PI * 2); c.fill();
-            for (let i = -4; i <= 4; i++) {
-                const tw = mWidth / 5; const tx = mx + i * tw * 0.9;
-                const thisH = teethH * (1 - Math.abs(i) * 0.05);
-                c.fillStyle = 'rgba(180,170,150,0.3)';
-                c.beginPath(); c.roundRect(tx - tw * 0.4 + 0.5, teethY + 0.5, tw * 0.78, thisH, 1.5); c.fill();
-                const toothG = c.createLinearGradient(tx, teethY, tx, teethY + thisH);
-                toothG.addColorStop(0, '#faf8f4'); toothG.addColorStop(0.7, '#f0ece4'); toothG.addColorStop(1, '#e5ddd4');
-                c.fillStyle = toothG;
-                c.beginPath(); c.roundRect(tx - tw * 0.4, teethY, tw * 0.78, thisH, 1.5); c.fill();
-                c.strokeStyle = 'rgba(255,255,255,0.2)'; c.lineWidth = 0.3; c.stroke();
-            }
-            if (jawOpen > 0.4) {
-                const lowerTeethY = my + mHeight * 0.3;
-                c.globalAlpha = clamp((jawOpen - 0.4) * 2, 0, 0.7);
-                for (let i = -3; i <= 3; i++) {
-                    const tw = mWidth / 5; const tx = mx + i * tw * 0.85;
-                    c.fillStyle = '#eae6de';
-                    c.beginPath(); c.roundRect(tx - tw * 0.35, lowerTeethY, tw * 0.7, 5, 1); c.fill();
-                }
-            }
-            c.globalAlpha = 1;
-        }
-        // Tongue with physics
-        if (jawOpen > 0.15 && tongueVis > 0.05) {
-            c.globalAlpha = clamp(tongueVis * 0.85 + jawOpen * 0.3, 0, 1);
-            const tongueBaseY = my + jawOpen * 6 + 2 + Physics.tongueY * 0.5;
-            const tongueW = mWidth * (0.4 + tongueVis * 0.15); const tongueH = jawOpen * 10 + tongueVis * 5;
-            const curl = Physics.tongueCurl;
-            const tongueG = c.createRadialGradient(mx + Physics.tongueX, tongueBaseY, 3, mx, tongueBaseY, tongueW);
-            tongueG.addColorStop(0, '#e85565'); tongueG.addColorStop(0.4, '#d04555');
-            tongueG.addColorStop(0.7, '#b03545'); tongueG.addColorStop(1, '#802535');
-            c.fillStyle = tongueG;
-            c.beginPath(); c.ellipse(mx + Physics.tongueX, tongueBaseY, tongueW, tongueH * (0.7 + curl * 0.3), 0, 0, Math.PI); c.fill();
-            c.strokeStyle = 'rgba(80,20,30,0.3)'; c.lineWidth = 0.9;
-            c.beginPath(); c.moveTo(mx + Physics.tongueX, tongueBaseY - tongueH * 0.2);
-            c.quadraticCurveTo(mx + Physics.tongueX + curl * 3, tongueBaseY + tongueH * 0.3, mx + Physics.tongueX, tongueBaseY + tongueH * 0.5); c.stroke();
-            c.fillStyle = 'rgba(255,180,180,0.15)';
-            c.beginPath(); c.ellipse(mx + Physics.tongueX, tongueBaseY - tongueH * 0.1, tongueW * 0.4, 3, 0, 0, Math.PI * 2); c.fill();
-            c.globalAlpha = 1;
-        }
-        c.restore();
-    }
-    // Upper lip (Cupid's bow)
-    const lipG = c.createLinearGradient(mx - mWidth, my, mx + mWidth, my);
-    lipG.addColorStop(0, '#b85a55'); lipG.addColorStop(0.3, '#cc6560');
-    lipG.addColorStop(0.5, '#d47068'); lipG.addColorStop(0.7, '#cc6560'); lipG.addColorStop(1, '#b85a55');
-    c.fillStyle = lipG;
-    c.beginPath();
-    c.moveTo(mx - mWidth, my - cornerLift + lipBounceU);
-    c.bezierCurveTo(mx - mWidth * 0.6, my - 6 - jawOpen * 4 - cornerLift * 0.4 + lipBounceU, mx - 5, my - 8 - jawOpen * 3 + lipBounceU, mx, my - 6 - jawOpen * 3 + lipBounceU);
-    c.bezierCurveTo(mx + 5, my - 8 - jawOpen * 3 + lipBounceU, mx + mWidth * 0.6, my - 6 - jawOpen * 4 - cornerLift * 0.4 + lipBounceU, mx + mWidth, my - cornerLift + lipBounceU);
-    c.fill();
-    // Lower lip
-    const lowerLipG = c.createLinearGradient(mx, my, mx, my + 8 + jawOpen * 10);
-    lowerLipG.addColorStop(0, '#d87570'); lowerLipG.addColorStop(0.6, '#cc6560'); lowerLipG.addColorStop(1, '#aa5048');
-    c.fillStyle = lowerLipG;
-    c.beginPath();
-    c.moveTo(mx - mWidth, my - cornerLift + lipBounceL);
-    c.bezierCurveTo(mx - mWidth * 0.4, my + 7 + jawOpen * 10 + lipBounceL, mx + mWidth * 0.4, my + 7 + jawOpen * 10 + lipBounceL, mx + mWidth, my - cornerLift + lipBounceL);
-    c.fill();
-    // Lip highlights (saliva gloss)
-    const glossPhase = Shading.salivaGlossPhase;
-    const glossIntensity = Shading.salivaGloss * (0.8 + Math.sin(glossPhase) * 0.2);
-    c.globalAlpha = glossIntensity * 0.3;
-    c.fillStyle = '#ffeedc';
-    c.beginPath(); c.ellipse(mx - 5, my - 4 - jawOpen * 2 + lipBounceU, 6 + Math.sin(glossPhase * 1.3) * 0.5, 2, -0.1, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.ellipse(mx + 5, my - 4 - jawOpen * 2 + lipBounceU, 5, 1.8, 0.1, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.ellipse(mx, my + 3 + jawOpen * 4 + lipBounceL, 8, 2.5, 0, 0, Math.PI * 2); c.fill();
-    c.globalAlpha = 1;
-    // Lip moistening animation
-    if (BodySystem.lipMoistenActive) {
-        const prog = BodySystem.lipMoistenProgress;
-        const tongueX = mx - mWidth + prog * mWidth * 2;
-        c.globalAlpha = (1 - Math.abs(prog - 0.5) * 2) * 0.3;
-        c.fillStyle = '#ff9090';
-        c.beginPath(); c.ellipse(tongueX, my - 3, 4, 2, 0, 0, Math.PI * 2); c.fill();
-        c.globalAlpha = 1;
-    }
-    // Lip corners with asymmetric movement
-    c.fillStyle = 'rgba(140,60,50,0.3)';
-    c.beginPath(); c.arc(mx - mWidth - 1 - lipCornerL * 2, my - cornerLift - lipCornerL * 1, 2, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc(mx + mWidth + 1 + lipCornerR * 2, my - cornerLift - lipCornerR * 1, 2, 0, Math.PI * 2); c.fill();
-    // ENHANCED: Nasolabial folds (always slightly visible, deepen with smile)
-    const nasoL = CheekSystem.nasolabialL;
-    const nasoR = CheekSystem.nasolabialR;
-    const nasoBase = 0.08; // Always slightly visible
-    c.strokeStyle = `rgba(160,100,70,${nasoBase + nasoL * 0.25})`;
-    c.lineWidth = 1.0 + nasoL * 0.8;
-    c.beginPath(); c.moveTo(mx - 30, my - 48);
-    c.bezierCurveTo(mx - 34, my - 25, mx - 36, my - 10, mx - mWidth - 3, my - cornerLift + 3); c.stroke();
-    c.strokeStyle = `rgba(160,100,70,${nasoBase + nasoR * 0.25})`;
-    c.lineWidth = 1.0 + nasoR * 0.8;
-    c.beginPath(); c.moveTo(mx + 30, my - 48);
-    c.bezierCurveTo(mx + 34, my - 25, mx + 36, my - 10, mx + mWidth + 3, my - cornerLift + 3); c.stroke();
-    // ENHANCED: Dimples
-    if (FACS.dimpleL > 0.05) {
-        c.globalAlpha = FACS.dimpleL * 0.25;
-        c.fillStyle = 'rgba(120,70,50,0.5)';
-        c.beginPath(); c.ellipse(mx - mWidth - 8, my - cornerLift - 5, 3, 4.5, -0.2, 0, Math.PI * 2); c.fill();
-        c.globalAlpha = 1;
-    }
-    if (FACS.dimpleR > 0.05) {
-        c.globalAlpha = FACS.dimpleR * 0.25;
-        c.fillStyle = 'rgba(120,70,50,0.5)';
-        c.beginPath(); c.ellipse(mx + mWidth + 8, my - cornerLift - 5, 3, 4.5, 0.2, 0, Math.PI * 2); c.fill();
-        c.globalAlpha = 1;
-    }
-    // Lip compression lines
-    if (SkinDeform.lipCompressionUpper > 0.1) {
-        c.globalAlpha = SkinDeform.lipCompressionUpper * 0.3; c.strokeStyle = 'rgba(160,80,70,0.4)'; c.lineWidth = 0.4;
-        for (let i = 0; i < 4; i++) {
-            const lx = mx - 10 + i * 6;
-            c.beginPath(); c.moveTo(lx, my - 5 + lipBounceU); c.lineTo(lx + 1, my - 2 + lipBounceU); c.stroke();
-        }
-        c.globalAlpha = 1;
-    }
-    // ENHANCED: Mentalis pucker (chin dimpling)
-    if (SkinDeform.mentalisPucker > 0.1) {
-        c.globalAlpha = SkinDeform.mentalisPucker * 0.15;
-        c.fillStyle = 'rgba(140,90,60,0.4)';
-        for (let i = 0; i < 4; i++) {
-            c.beginPath();
-            c.arc(mx - 6 + i * 4 + Math.sin(i) * 2, my + 20 + jawOpen * 8, 1.5, 0, Math.PI * 2);
-            c.fill();
-        }
-        c.globalAlpha = 1;
-    }
-}
-
-
-/* ===================================================================
-   DRAWING: HAND (Enhanced with better articulation + knuckle detail)
-   =================================================================== */
-function drawArticulatedHand(c, x, y, angle, fingers, spread) {
-    c.save(); c.translate(x, y); c.rotate(angle);
-    const palmG = c.createRadialGradient(0, 0, 2, 0, 0, 20);
-    palmG.addColorStop(0, '#fce8d8'); palmG.addColorStop(0.5, '#f5d0b0'); palmG.addColorStop(1, '#dca878');
-    c.fillStyle = palmG;
-    c.beginPath(); c.ellipse(0, 0, 16, 22, 0, 0, Math.PI * 2); c.fill();
-    // ENHANCED: Knuckle bumps
-    c.fillStyle = 'rgba(220,180,150,0.3)';
-    for (let i = -2; i <= 2; i++) {
-        c.beginPath(); c.ellipse(i * 5, -16, 3, 2.5, 0, 0, Math.PI * 2); c.fill();
-    }
-    const fingerData = [
-        { bx: -9, by: -15, angle: -0.3, len: 18, w: 4.5 },
-        { bx: -4, by: -19, angle: -0.1, len: 22, w: 4.2 },
-        { bx: 1, by: -20, angle: 0, len: 23, w: 4.3 },
-        { bx: 6, by: -18, angle: 0.1, len: 20, w: 4 },
-        { bx: 10, by: -14, angle: 0.3, len: 16, w: 3.8 },
-    ];
-    const sp = spread || 0;
-    for (let i = 0; i < 5; i++) {
-        const f = fingerData[i];
-        const curl = fingers ? fingers[i * 3] || 0 : 0;
-        const bendMid = fingers ? fingers[i * 3 + 1] || 0 : 0;
-        const bendTip = fingers ? fingers[i * 3 + 2] || 0 : 0;
-        c.save(); c.translate(f.bx + sp * f.bx * 0.05, f.by);
-        c.rotate(f.angle + curl * 0.5);
-        // Proximal phalanx
-        c.fillStyle = '#f5d5b8';
-        c.beginPath(); c.roundRect(-f.w/2, 0, f.w, f.len * 0.45, 2); c.fill();
-        // ENHANCED: Joint wrinkle
-        c.strokeStyle = 'rgba(180,130,100,0.25)'; c.lineWidth = 0.4;
-        c.beginPath(); c.moveTo(-f.w/2, f.len * 0.44); c.lineTo(f.w/2, f.len * 0.44); c.stroke();
-        c.beginPath(); c.moveTo(-f.w/2 + 0.5, f.len * 0.42); c.lineTo(f.w/2 - 0.5, f.len * 0.42); c.stroke();
-        // Middle phalanx
-        c.translate(0, -f.len * 0.45); c.rotate(bendMid * 0.3);
-        c.fillStyle = '#f2d0b2';
-        c.beginPath(); c.roundRect(-f.w * 0.45, 0, f.w * 0.9, f.len * 0.3, 2); c.fill();
-        // Distal phalanx + nail
-        c.translate(0, -f.len * 0.3); c.rotate(bendTip * 0.2);
-        c.fillStyle = '#f0ccae';
-        c.beginPath(); c.roundRect(-f.w * 0.4, 0, f.w * 0.8, f.len * 0.25, 2); c.fill();
-        // Fingernail
-        const nailG = c.createLinearGradient(0, -f.len * 0.08, 0, f.len * 0.1);
-        nailG.addColorStop(0, '#ffeedd'); nailG.addColorStop(0.5, '#ffe8d8'); nailG.addColorStop(1, '#f5d8c8');
-        c.fillStyle = nailG;
-        c.beginPath(); c.roundRect(-f.w * 0.35, -f.len * 0.08, f.w * 0.7, f.len * 0.18, 1.5); c.fill();
-        // Nail lunula
-        c.fillStyle = 'rgba(255,255,255,0.2)';
-        c.beginPath(); c.ellipse(0, f.len * 0.05, f.w * 0.2, 2, 0, 0, Math.PI * 2); c.fill();
-        // Nail highlight
-        c.fillStyle = 'rgba(255,255,255,0.12)';
-        c.beginPath(); c.ellipse(0, -f.len * 0.02, f.w * 0.15, f.len * 0.04, 0, 0, Math.PI * 2); c.fill();
-        c.restore();
-    }
-    // Palm creases (enhanced)
-    c.strokeStyle = 'rgba(180,130,100,0.2)'; c.lineWidth = 0.5;
-    c.beginPath(); c.moveTo(-9, 2); c.quadraticCurveTo(0, -1, 9, 3); c.stroke();
-    c.beginPath(); c.moveTo(-7, 6); c.quadraticCurveTo(2, 4, 10, 7); c.stroke();
-    c.beginPath(); c.moveTo(-5, 10); c.quadraticCurveTo(0, 9, 7, 11); c.stroke();
-    // ENHANCED: Wrist crease
-    c.beginPath(); c.moveTo(-12, 18); c.quadraticCurveTo(0, 17, 12, 18); c.stroke();
-    c.restore();
-}
-
-
-/* ===================================================================
-   MAIN DRAW FUNCTION - Layered Cinematic Rendering Pipeline
-   =================================================================== */
-function draw() {
-    cx.clearRect(0, 0, W, H);
-    const breath = BodySystem.chestExpand;
-    const swayX = BodySystem.torsoSwayX;
-    const swayY = BodySystem.torsoSwayY;
-    const headBob = Math.sin(BodySystem.headBobPhase) * BodySystem.headBobIntensity * 2.5;
-    const neckTilt = BodySystem.neckRotZ + BodySystem.microHeadZ;
-
-    // Background
-    const bgG = cx.createRadialGradient(CX + 30, H * 0.25, 60, CX, H * 0.5, H * 0.8);
-    bgG.addColorStop(0, '#1e2d4a'); bgG.addColorStop(0.3, '#141f35');
-    bgG.addColorStop(0.6, '#0c1525'); bgG.addColorStop(1, '#050a14');
-    cx.fillStyle = bgG; cx.fillRect(0, 0, W, H);
-
-    const breathGlow = 0.06 + Math.sin(Shading.lightBreathPhase) * 0.01;
-    cx.globalAlpha = breathGlow; cx.fillStyle = '#4080cc';
-    cx.beginPath(); cx.ellipse(CX, 320, 200, 280, 0, 0, Math.PI * 2); cx.fill();
-    cx.globalAlpha = 0.03; cx.fillStyle = '#3090dd';
-    cx.beginPath(); cx.ellipse(CX, H - 40, 180, 40, 0, 0, Math.PI * 2); cx.fill();
-    cx.globalAlpha = 1;
-
-    cx.save(); cx.translate(CX + swayX, 0);
-
-    // TORSO + BODY
-    const torsoY = 370 + breath * 0.5 + swayY;
-    const shoulderW = 100;
-    const neckY = torsoY - 35 + breath * 0.3;
-
-    // NECK with tendon detail
-    const neckG = cx.createLinearGradient(CX - 18 + swayX, neckY - 12, CX + 18 + swayX, neckY + 25);
-    neckG.addColorStop(0, '#f5dcc8'); neckG.addColorStop(0.7, '#ecc4a8'); neckG.addColorStop(1, '#d8a880');
-    cx.fillStyle = neckG;
-    cx.beginPath();
-    cx.moveTo(-20, neckY - 12); cx.quadraticCurveTo(-22, neckY + 12, -18, neckY + 32);
-    cx.lineTo(18, neckY + 32); cx.quadraticCurveTo(22, neckY + 12, 20, neckY - 12);
-    cx.closePath(); cx.fill();
-    // Neck tendons
-    if (SkinDeform.neckTendonL > 0.05 || SkinDeform.neckTendonR > 0.05) {
-        cx.strokeStyle = `rgba(180,130,90,${Math.max(SkinDeform.neckTendonL, SkinDeform.neckTendonR) * 0.2})`;
-        cx.lineWidth = 0.9;
-        if (SkinDeform.neckTendonL > 0.05) {
-            cx.beginPath(); cx.moveTo(-12, neckY - 5); cx.quadraticCurveTo(-11, neckY + 12, -9, neckY + 28); cx.stroke();
-            cx.beginPath(); cx.moveTo(-8, neckY - 3); cx.quadraticCurveTo(-7, neckY + 10, -6, neckY + 26); cx.stroke();
-        }
-        if (SkinDeform.neckTendonR > 0.05) {
-            cx.beginPath(); cx.moveTo(12, neckY - 5); cx.quadraticCurveTo(11, neckY + 12, 9, neckY + 28); cx.stroke();
-            cx.beginPath(); cx.moveTo(8, neckY - 3); cx.quadraticCurveTo(7, neckY + 10, 6, neckY + 26); cx.stroke();
-        }
-    }
-    // ENHANCED: Platysma tension (neck muscles during strong emotions)
-    if (SkinDeform.platysmaTension > 0.05) {
-        cx.strokeStyle = `rgba(180,140,100,${SkinDeform.platysmaTension * 0.15})`;
-        cx.lineWidth = 0.6;
-        for (let i = -2; i <= 2; i++) {
-            cx.beginPath(); cx.moveTo(i * 5, neckY + 5); cx.lineTo(i * 6, neckY + 28); cx.stroke();
-        }
-    }
-    // Swallow animation
-    if (BodySystem.swallowActive) {
-        const sp = BodySystem.swallowProgress;
-        const bobY = Math.sin(sp * Math.PI) * 4;
-        cx.fillStyle = 'rgba(220,180,150,0.15)';
-        cx.beginPath(); cx.ellipse(0, neckY + 10 - bobY, 6, 4, 0, 0, Math.PI * 2); cx.fill();
-    }
-    drawAmbientOcclusion(cx, 0, neckY + 30, 18, 6, 0.5);
-
-
-    // RIGHT ARM
-    cx.save();
-    cx.translate(shoulderW, torsoY + 12 + BodySystem.shoulderR);
-    cx.rotate(0.08 + BodySystem.armR.shoulder);
-    cx.fillStyle = '#2b3a55';
-    cx.beginPath(); cx.roundRect(-15, 0, 30, 90, 9); cx.fill();
-    cx.save(); cx.translate(0, 90); cx.rotate(0.04 + BodySystem.armR.elbow);
-    cx.fillStyle = '#f2d4b8';
-    cx.beginPath(); cx.roundRect(-11, 0, 22, 65, 7); cx.fill();
-    drawArticulatedHand(cx, 0, 70, BodySystem.armR.wrist, BodySystem.fingersR, speaking ? Math.sin(time * 3) * 0.15 * BodySystem.handExpressiveness : 0);
-    cx.restore(); cx.restore();
-
-    // LEFT ARM
-    cx.save();
-    cx.translate(-shoulderW, torsoY + 12 + BodySystem.shoulderL);
-    cx.rotate(-0.08 + BodySystem.armL.shoulder);
-    cx.fillStyle = '#2b3a55';
-    cx.beginPath(); cx.roundRect(-15, 0, 30, 90, 9); cx.fill();
-    cx.save(); cx.translate(0, 90); cx.rotate(-0.04 + BodySystem.armL.elbow);
-    cx.fillStyle = '#f2d4b8';
-    cx.beginPath(); cx.roundRect(-11, 0, 22, 65, 7); cx.fill();
-    drawArticulatedHand(cx, 0, 70, BodySystem.armL.wrist, BodySystem.fingersL, 0);
-    cx.restore(); cx.restore();
-
-    // TORSO
-    const shirtG = cx.createLinearGradient(-shoulderW, torsoY, shoulderW, torsoY + 230);
-    shirtG.addColorStop(0, '#3a4d6e'); shirtG.addColorStop(0.4, '#2e3f5a');
-    shirtG.addColorStop(0.8, '#232f44'); shirtG.addColorStop(1, '#1a2538');
-    cx.fillStyle = shirtG;
-    cx.beginPath();
-    cx.moveTo(-shoulderW, torsoY);
-    cx.bezierCurveTo(-shoulderW - 5, torsoY + 110, -shoulderW + 25, torsoY + 220, -45, torsoY + 250);
-    cx.lineTo(45, torsoY + 250);
-    cx.bezierCurveTo(shoulderW - 25, torsoY + 220, shoulderW + 5, torsoY + 110, shoulderW, torsoY);
-    cx.closePath(); cx.fill();
-    // Collar
-    cx.fillStyle = '#f0f4fa';
-    cx.beginPath(); cx.moveTo(-24, torsoY + Physics.clothOffset); cx.lineTo(0, torsoY + 55 + Physics.clothOffset);
-    cx.lineTo(24, torsoY + Physics.clothOffset); cx.closePath(); cx.fill();
-    cx.fillStyle = '#dce4f0';
-    cx.beginPath(); cx.moveTo(-18, torsoY + 5 + Physics.clothOffset); cx.lineTo(0, torsoY + 45 + Physics.clothOffset);
-    cx.lineTo(18, torsoY + 5 + Physics.clothOffset); cx.closePath(); cx.fill();
-    cx.fillStyle = '#1a2538';
-    cx.beginPath(); cx.arc(0, torsoY + 100, 4, 0, Math.PI * 2); cx.fill();
-    cx.fillStyle = '#0f1a28';
-    cx.beginPath(); cx.arc(0, torsoY + 100, 2, 0, Math.PI * 2); cx.fill();
-    cx.strokeStyle = 'rgba(255,255,255,0.06)'; cx.lineWidth = 0.8;
-    cx.beginPath(); cx.moveTo(-40, torsoY + 130); cx.lineTo(-15, torsoY + 130); cx.stroke();
-
-
-    // === HEAD ===
-    const headCY = neckY - 85 + headBob + breath * 0.3;
-    cx.save();
-    cx.translate(0, headCY); cx.rotate(neckTilt + BodySystem.headNod + BodySystem.microHeadX);
-    cx.translate(0, -headCY);
-
-    // Hair back
-    cx.fillStyle = '#221508';
-    cx.beginPath(); cx.ellipse(0, headCY - 12, 100, 85, 0, 0, Math.PI * 2); cx.fill();
-
-    // Face shape with jaw deformation + soft tissue momentum
-    const jawDrop = FACS.AU26 * 4 + FACS.AU27 * 8 + Physics.jawRecoil + Physics.softTissueMomentum;
-    const skinG = createSkinGradient(cx, 0, headCY, 100, Shading.skinBase, Shading.skinShadow, Shading.skinHighlight);
-    cx.fillStyle = skinG;
-    cx.beginPath();
-    cx.moveTo(-82, headCY - 28);
-    cx.bezierCurveTo(-90, headCY - 65, -75, headCY - 110, 0, headCY - 115);
-    cx.bezierCurveTo(75, headCY - 110, 90, headCY - 65, 82, headCY - 28);
-    cx.bezierCurveTo(80, headCY + 22, 60 + CheekSystem.jawDeformL, headCY + 65, 32, headCY + 80 + jawDrop);
-    cx.quadraticCurveTo(0, headCY + 92 + jawDrop + SkinDeform.chinFold * 3, -32, headCY + 80 + jawDrop);
-    cx.bezierCurveTo(-60 - CheekSystem.jawDeformR, headCY + 65, -80, headCY + 22, -82, headCY - 28);
-    cx.fill();
-
-    // SSS
-    drawSubsurfaceScatter(cx, -25, headCY + 10, 50, 0.3);
-    drawSubsurfaceScatter(cx, 25, headCY + 10, 50, 0.3);
-
-    // Forehead highlight
-    cx.fillStyle = 'rgba(255,252,245,0.1)';
-    cx.beginPath(); cx.ellipse(0, headCY - 65, 45, 28, 0, 0, Math.PI * 2); cx.fill();
-
-    // Forehead wrinkles
-    for (let i = 0; i < 5; i++) {
-        const wy = headCY - 85 + i * 6;
-        const intensity = BrowSystem.wrinkleLines[i];
-        if (intensity > 0.05) {
-            cx.strokeStyle = `rgba(160,110,70,${intensity * 0.2})`;
-            cx.lineWidth = 0.7 + intensity * 0.5;
-            cx.beginPath(); cx.moveTo(-35 + i * 3, wy);
-            cx.quadraticCurveTo(0, wy - intensity * 2, 35 - i * 3, wy); cx.stroke();
-        }
-    }
-    // ENHANCED: Corrugator furrow (between brows - "11" lines)
-    if (BrowSystem.corrugatorDepth > 0.1) {
-        cx.strokeStyle = `rgba(150,95,60,${BrowSystem.corrugatorDepth * 0.2})`;
-        cx.lineWidth = 0.8;
-        cx.beginPath(); cx.moveTo(-6, headCY - 58); cx.lineTo(-5, headCY - 48); cx.stroke();
-        cx.beginPath(); cx.moveTo(6, headCY - 58); cx.lineTo(5, headCY - 48); cx.stroke();
-    }
-
-    // Jaw shadow
-    cx.fillStyle = 'rgba(140,90,55,0.1)';
-    cx.beginPath();
-    cx.moveTo(-72, headCY + 22);
-    cx.quadraticCurveTo(0, headCY + 95 + jawDrop, 72, headCY + 22);
-    cx.quadraticCurveTo(0, headCY + 75 + jawDrop, -72, headCY + 22);
-    cx.fill();
-
-    // Jaw muscle bulge
-    if (SkinDeform.jawMuscleL > 0.05) {
-        cx.globalAlpha = SkinDeform.jawMuscleL * 0.12;
-        cx.fillStyle = '#f0c8a8';
-        cx.beginPath(); cx.ellipse(-65, headCY + 25, 10, 7, -0.2, 0, Math.PI * 2); cx.fill();
-        cx.beginPath(); cx.ellipse(65, headCY + 25, 10, 7, 0.2, 0, Math.PI * 2); cx.fill();
-        cx.globalAlpha = 1;
-    }
-
-    // Ears with physics
-    for (let side of [-1, 1]) {
-        const earX = side * 84;
-        const earY = headCY - 10;
-        const earDrop = side === -1 ? Physics.earLobeL : Physics.earLobeR;
-        cx.fillStyle = '#f0c8a8';
-        cx.beginPath(); cx.ellipse(earX, earY, 13, 22, side * 0.15, 0, Math.PI * 2); cx.fill();
-        cx.strokeStyle = 'rgba(180,120,80,0.25)'; cx.lineWidth = 0.8;
-        cx.beginPath(); cx.ellipse(earX + side * 2, earY, 7, 14, side * 0.1, 0, Math.PI * 2); cx.stroke();
-        // ENHANCED: Ear lobe bounce
-        cx.fillStyle = '#ecc0a0';
-        cx.beginPath(); cx.ellipse(earX + side, earY + 18 + earDrop, 5, 6, side * 0.1, 0, Math.PI * 2); cx.fill();
-        drawAmbientOcclusion(cx, earX - side * 3, earY, 8, 15, 0.4);
-    }
-
-
-    // Cheeks with blush + apple of cheek + stretching
-    if (CheekSystem.blushIntensity > 0.01) {
-        cx.globalAlpha = CheekSystem.blushIntensity * 0.4;
-        const [br, bg, bb] = CheekSystem.blushColor;
-        cx.fillStyle = `rgb(${br},${bg},${bb})`;
-        cx.beginPath(); cx.ellipse(-55, headCY + 18 + CheekSystem.stretchL * 3 - CheekSystem.appleHeightL, 24 + CheekSystem.compressionL * 5, 15, -0.1, 0, Math.PI * 2); cx.fill();
-        cx.beginPath(); cx.ellipse(55, headCY + 18 + CheekSystem.stretchR * 3 - CheekSystem.appleHeightR, 24 + CheekSystem.compressionR * 5, 15, 0.1, 0, Math.PI * 2); cx.fill();
-        cx.globalAlpha = 1;
-    }
-    if (CheekSystem.highlightL > 0.1) {
-        cx.globalAlpha = CheekSystem.highlightL * 0.15; cx.fillStyle = '#fff8f0';
-        cx.beginPath(); cx.ellipse(-48, headCY + 8 - CheekSystem.appleHeightL, 18, 8, -0.2, 0, Math.PI * 2); cx.fill();
-        cx.beginPath(); cx.ellipse(48, headCY + 8 - CheekSystem.appleHeightR, 18, 8, 0.2, 0, Math.PI * 2); cx.fill();
-        cx.globalAlpha = 1;
-    }
-    if (Math.abs(Physics.cheekJiggle) > 0.1) {
-        cx.globalAlpha = 0.03; cx.fillStyle = '#f5d5be';
-        cx.beginPath(); cx.ellipse(-50, headCY + 15 + Physics.cheekJiggle, 20, 12, 0, 0, Math.PI * 2); cx.fill();
-        cx.beginPath(); cx.ellipse(50, headCY + 15 + Physics.cheekJiggle, 20, 12, 0, 0, Math.PI * 2); cx.fill();
-        cx.globalAlpha = 1;
-    }
-
-    // Eyebrows (enhanced with spring-based movement)
-    cx.lineCap = 'round';
-    for (let side of [-1, 1]) {
-        const bx = side * 40; const by = headCY - 52;
-        const innerOff = (side === -1 ? BrowSystem.innerL : BrowSystem.innerR) * -8;
-        const outerOff = (side === -1 ? BrowSystem.outerL : BrowSystem.outerR) * -6;
-        const compress = BrowSystem.compression * 3 * side;
-        const browG = cx.createLinearGradient(bx - 28, by, bx + 28, by);
-        browG.addColorStop(0, '#3d2a18'); browG.addColorStop(0.5, '#2a1a0e'); browG.addColorStop(1, '#3d2a18');
-        cx.strokeStyle = browG; cx.lineWidth = 3.5;
-        cx.beginPath();
-        cx.moveTo(bx - side * 30, by + outerOff + 3);
-        cx.bezierCurveTo(bx - side * 15, by + innerOff - 3 + compress * 0.3, bx + side * 10, by + innerOff - 5, bx + side * 28, by + outerOff + 2);
-        cx.stroke();
-        cx.lineWidth = 2.2;
-        cx.beginPath();
-        cx.moveTo(bx - side * 22, by + outerOff + 5);
-        cx.bezierCurveTo(bx - side * 8, by + innerOff - 1 + compress * 0.3, bx + side * 12, by + innerOff - 3, bx + side * 24, by + outerOff + 4);
-        cx.stroke();
-        // ENHANCED: Brow tension lines when compressed
-        if (BrowSystem.compression > 0.2) {
-            cx.strokeStyle = `rgba(160,100,65,${BrowSystem.compression * 0.2})`; cx.lineWidth = 0.8;
-            cx.beginPath(); cx.moveTo(side * 5, by + 2); cx.lineTo(side * 5, by + 12); cx.stroke();
-            cx.beginPath(); cx.moveTo(side * 9, by + 3); cx.lineTo(side * 8, by + 11); cx.stroke();
-        }
-    }
-
-    // Eyes
-    drawRealisticEye(cx, -40, headCY - 24, true);
-    drawRealisticEye(cx, 40, headCY - 24, false);
-
-    // Nose (enhanced with tip movement)
-    const noseFlareL = NoseSystem.nostrilFlareL; const noseFlareR = NoseSystem.nostrilFlareR;
-    const noseTip = NoseSystem.tipMovement;
-    cx.strokeStyle = 'rgba(180,130,90,0.18)'; cx.lineWidth = 1.6;
-    cx.beginPath(); cx.moveTo(-4, headCY - 18); cx.bezierCurveTo(-5, headCY + 5, -7, headCY + 22, -9, headCY + 32 + noseTip); cx.stroke();
-    cx.beginPath(); cx.moveTo(4, headCY - 18); cx.bezierCurveTo(5, headCY + 5, 7, headCY + 22, 9, headCY + 32 + noseTip); cx.stroke();
-    cx.fillStyle = 'rgba(255,240,220,0.2)';
-    cx.beginPath(); cx.ellipse(0, headCY + 30 + noseTip, 12, 8, 0, 0, Math.PI * 2); cx.fill();
-    cx.fillStyle = 'rgba(255,250,240,0.12)';
-    cx.beginPath(); cx.ellipse(1, headCY + 5, 4, 15, 0, 0, Math.PI * 2); cx.fill();
-    cx.fillStyle = 'rgba(130,75,45,0.4)';
-    cx.beginPath(); cx.ellipse(-9 - noseFlareL * 3, headCY + 36 + noseTip, 5.5 + noseFlareL * 2, 4, -0.2, 0, Math.PI * 2); cx.fill();
-    cx.beginPath(); cx.ellipse(9 + noseFlareR * 3, headCY + 36 + noseTip, 5.5 + noseFlareR * 2, 4, 0.2, 0, Math.PI * 2); cx.fill();
-    if (NoseSystem.wrinkle > 0.1) {
-        cx.strokeStyle = `rgba(160,100,60,${NoseSystem.wrinkle * 0.18})`; cx.lineWidth = 0.7;
-        for (let i = 0; i < 3; i++) {
-            cx.beginPath(); cx.moveTo(-14, headCY + 18 + i * 4); cx.quadraticCurveTo(-10, headCY + 17 + i * 4 - NoseSystem.wrinkle * 2, -6, headCY + 18 + i * 4); cx.stroke();
-            cx.beginPath(); cx.moveTo(14, headCY + 18 + i * 4); cx.quadraticCurveTo(10, headCY + 17 + i * 4 - NoseSystem.wrinkle * 2, 6, headCY + 18 + i * 4); cx.stroke();
-        }
-    }
-    cx.fillStyle = 'rgba(150,95,55,0.08)';
-    cx.beginPath(); cx.ellipse(0, headCY + 40 + noseTip, 16, 5, 0, 0, Math.PI); cx.fill();
-
-    // Mouth
-    drawRealisticMouth(cx, 0, headCY + 58 + jawDrop * 0.5);
-
-    // Chin with fold + mentalis
-    cx.fillStyle = 'rgba(255,240,220,0.08)';
-    cx.beginPath(); cx.ellipse(0, headCY + 78 + jawDrop, 16, 11, 0, 0, Math.PI * 2); cx.fill();
-    if (SkinDeform.chinFold > 0.1) {
-        cx.strokeStyle = `rgba(160,110,70,${SkinDeform.chinFold * 0.15})`; cx.lineWidth = 0.6;
-        cx.beginPath(); cx.moveTo(-12, headCY + 82 + jawDrop); cx.quadraticCurveTo(0, headCY + 84 + jawDrop, 12, headCY + 82 + jawDrop); cx.stroke();
-    }
-    cx.strokeStyle = 'rgba(160,110,70,0.1)'; cx.lineWidth = 0.6;
-    cx.beginPath(); cx.arc(0, headCY + 80 + jawDrop, 3.5, 0.3, Math.PI - 0.3); cx.stroke();
-
-
-    // Hair front layer with physics
-    const hairG = cx.createLinearGradient(-85, headCY - 110, 85, headCY - 40);
-    hairG.addColorStop(0, '#3d2812'); hairG.addColorStop(0.3, '#221508');
-    hairG.addColorStop(0.6, '#4a2e18'); hairG.addColorStop(1, '#221508');
-    cx.fillStyle = hairG;
-    cx.beginPath();
-    cx.moveTo(-86, headCY - 32);
-    cx.bezierCurveTo(-92, headCY - 72, -75, headCY - 115, -22, headCY - 120);
-    cx.bezierCurveTo(12, headCY - 123, 65, headCY - 118, 86, headCY - 72);
-    cx.bezierCurveTo(90, headCY - 48, 88, headCY - 32, 82, headCY - 27);
-    cx.bezierCurveTo(74, headCY - 58, 55, headCY - 90, 0, headCY - 95);
-    cx.bezierCurveTo(-55, headCY - 90, -74, headCY - 58, -86, headCY - 32);
-    cx.fill();
-
-    // Hair strands
-    for (const strand of Physics.hairStrands) {
-        cx.strokeStyle = `rgba(${50 + strand.hue * 30},${30 + strand.hue * 20},${12 + strand.hue * 10},0.2)`;
-        cx.lineWidth = strand.thickness * 0.7;
-        cx.beginPath(); cx.moveTo(strand.baseX, headCY + strand.baseY);
-        cx.bezierCurveTo(strand.midX, headCY + strand.midY, strand.midX + (strand.tipX - strand.midX) * 0.5, headCY + strand.midY + (strand.tipY - strand.midY) * 0.5, strand.tipX, headCY + strand.tipY);
-        cx.stroke();
-    }
-
-    // Side hair
-    cx.fillStyle = '#221508';
-    cx.beginPath(); cx.moveTo(-86, headCY - 32);
-    cx.bezierCurveTo(-94, headCY, -92, headCY + 35, -78, headCY + 55);
-    cx.bezierCurveTo(-74, headCY + 22, -76, headCY - 10, -82, headCY - 32); cx.fill();
-    cx.beginPath(); cx.moveTo(86, headCY - 32);
-    cx.bezierCurveTo(94, headCY, 92, headCY + 35, 78, headCY + 55);
-    cx.bezierCurveTo(74, headCY + 22, 76, headCY - 10, 82, headCY - 32); cx.fill();
-
-    // Hair highlights
-    cx.globalAlpha = 0.08; cx.fillStyle = '#886644';
-    cx.beginPath(); cx.ellipse(-20, headCY - 90, 25, 10, -0.3, 0, Math.PI * 2); cx.fill();
-    cx.beginPath(); cx.ellipse(30, headCY - 85, 20, 8, 0.2, 0, Math.PI * 2); cx.fill();
-    cx.globalAlpha = 1;
-
-    // Rim lighting
-    drawRimLight(cx, -75, headCY, 20, 80, Math.PI);
-    drawRimLight(cx, 75, headCY, 20, 80, 0);
-
-    // Skin pores
-    drawSkinPores(cx, 0, headCY, 70, 80);
-
-    cx.restore(); // End head rotation
-
-    // Particles
-    for (const p of particles) {
-        cx.globalAlpha = clamp(p.alpha, 0, 1);
-        if (p.type === 'tear') {
-            cx.fillStyle = 'rgba(150,200,255,0.85)';
-            cx.beginPath(); cx.moveTo(p.x, p.y - 4);
-            cx.quadraticCurveTo(p.x + 3, p.y, p.x, p.y + 4);
-            cx.quadraticCurveTo(p.x - 3, p.y, p.x, p.y - 4); cx.fill();
-            cx.fillStyle = 'rgba(255,255,255,0.5)';
-            cx.beginPath(); cx.arc(p.x - 1, p.y - 1, 1.2, 0, Math.PI * 2); cx.fill();
-        }
-        if (p.type === 'heart') {
-            cx.fillStyle = '#ff4488'; const hs = p.size;
-            cx.beginPath(); cx.moveTo(p.x, p.y + hs * 0.3);
-            cx.bezierCurveTo(p.x - hs * 0.5, p.y - hs * 0.3, p.x - hs, p.y + hs * 0.1, p.x, p.y + hs * 0.7);
-            cx.bezierCurveTo(p.x + hs, p.y + hs * 0.1, p.x + hs * 0.5, p.y - hs * 0.3, p.x, p.y + hs * 0.3); cx.fill();
-        }
-        if (p.type === 'sparkle') {
-            cx.fillStyle = '#ffee88'; const ss = p.size;
-            cx.beginPath(); cx.moveTo(p.x, p.y - ss); cx.lineTo(p.x + ss * 0.3, p.y);
-            cx.lineTo(p.x, p.y + ss); cx.lineTo(p.x - ss * 0.3, p.y); cx.closePath(); cx.fill();
-        }
-        cx.globalAlpha = 1;
-    }
-
-    cx.restore(); // End sway
-}
-
-
-/* ===================================================================
-   MAIN LOOP
-   =================================================================== */
-function mainLoop(timestamp) {
-    const dt = Math.min((timestamp - AnimState.lastFrameTime) / 16.67, 3);
-    AnimState.lastFrameTime = timestamp;
-    AnimState.frameCount++;
-    time += 0.016 * dt;
-    AnimState.cinematicBeat += AnimState.cinematicTempo * 0.01 * dt;
-    AnimState.imperfectionPhase += 0.007 * dt;
-    Shading.lightBreathPhase += 0.008 * dt;
-    Shading.salivaGlossPhase += 0.015 * dt;
-    updateAudioLipSync(dt);
-    updateFACS(dt);
-    updateLipSync(dt);
-    updateEyeSystem(dt);
-    updateBrowSystem(dt);
-    updateNoseCheek(dt);
-    updateBody(dt);
-    updatePhysics(dt);
-    updateParticles(dt);
-    draw();
-    requestAnimationFrame(mainLoop);
-}
-requestAnimationFrame(mainLoop);
-
-/* ===================================================================
-   PUBLIC API (Compatible with existing module script)
-   =================================================================== */
-window.avatar2d = {
-    startSpeak: function(txt) {
-        speaking = true;
-        LipSync.buffer = textToPhonemeSequence(txt);
-        LipSync.bufferIdx = 0; LipSync.frameTimer = 0;
-        BodySystem.headBobIntensity = 0;
-        AudioLipSync.isActive = true;
-        AudioLipSync.speechState = 'anticipation';
-        AudioLipSync.anticipationProgress = 0;
-        AudioLipSync.anticipationActive = true;
-        initAudioAnalyser();
-        try {
-            if (AudioLipSync.audioContext && AudioLipSync.audioContext.state === 'suspended') AudioLipSync.audioContext.resume();
-            if (AudioLipSync.analyser && !AudioLipSync.isMonitoring) {
-                const monitor = AudioLipSync.audioContext.createScriptProcessor(2048, 1, 1);
-                monitor.onaudioprocess = function(e) {
-                    const input = e.inputBuffer.getChannelData(0);
-                    let sum = 0;
-                    for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
-                    AudioLipSync.rmsLevel = Math.sqrt(sum / input.length);
-                };
-                AudioLipSync.isMonitoring = true;
-            }
-        } catch(e) {}
-        transitionTo('speaking');
-        EyeSystem.gazeMode = 'speaking';
-        if (txt.length > 50) triggerGesture('explain_both');
-        else if (txt.length > 20) triggerGesture('explain');
-        else triggerGesture('open_palm');
-        document.getElementById('avatar2dStatus').textContent = 'SPEAKING (AUDIO-DRIVEN)...';
-    },
-    stopSpeak: function() {
-        speaking = false;
-        LipSync.buffer = []; LipSync.bufferIdx = 0;
-        LipSync.target = LipSync.visemeMap['sil'];
-        AudioLipSync.speechState = 'recovery';
-        AudioLipSync.recoveryActive = true;
-        AudioLipSync.recoveryProgress = 0;
-        setTimeout(() => { AudioLipSync.isActive = false; AudioLipSync.speechState = 'silent'; }, AudioLipSync.recoveryDuration);
-        transitionTo('idle');
-        EyeSystem.gazeMode = 'idle';
-        document.getElementById('avatar2dStatus').textContent = 'AVATAR READY';
-    },
-    setEmo: function(e) { setEmotion(e); },
-    doWave: function() { triggerGesture('wave'); },
-    triggerGesture: function(name) { triggerGesture(name); },
-    setGaze: function(x, y) {
-        EyeSystem.gazeTargetX = clamp(x, -3, 3);
-        EyeSystem.gazeTargetY = clamp(y, -2, 2);
-    },
-    applyFaceTracking: function(data) {
-        if (data.headRotation) {
-            BodySystem.neckTargetY = clamp(data.headRotation.yaw * 0.5, -0.15, 0.15);
-            BodySystem.neckTargetZ = clamp(data.headRotation.roll * 0.3, -0.1, 0.1);
-            BodySystem.headNodTarget = clamp(data.headRotation.pitch * 0.3, -0.1, 0.1);
-        }
-        if (data.mouthOpen !== undefined) { if (!speaking) LipSync.target.jaw = data.mouthOpen; }
-        if (data.eyeOpenL !== undefined) {
-            EyeSystem.lidTargetL = data.eyeOpenL;
-            EyeSystem.lidTargetR = data.eyeOpenR || data.eyeOpenL;
-        }
-        if (data.browL !== undefined) {
-            BrowSystem.innerLTarget = data.browL * 0.8;
-            BrowSystem.innerRTarget = (data.browR || data.browL) * 0.8;
-        }
-    },
-    connectAudioSource: function(mediaElement) {
-        initAudioAnalyser();
-        if (!AudioLipSync.audioContext) return;
-        try {
-            const source = AudioLipSync.audioContext.createMediaElementSource(mediaElement);
-            source.connect(AudioLipSync.analyser);
-            AudioLipSync.analyser.connect(AudioLipSync.audioContext.destination);
-            AudioLipSync.isActive = true; AudioLipSync.isMonitoring = true;
-        } catch(e) { console.warn('[AudioLipSync] Could not connect source:', e); }
-    },
-    feedAudioData: function(rmsValue, frequencyBands) {
-        AudioLipSync.rmsLevel = rmsValue || 0;
-        if (frequencyBands) AudioLipSync.bands = { ...AudioLipSync.bands, ...frequencyBands };
-        AudioLipSync.isActive = true;
-        if (rmsValue > 0.02 && AudioLipSync.speechState === 'silent') AudioLipSync.speechState = 'speaking';
-    },
-    getLipSyncState: function() {
-        return { speechState: AudioLipSync.speechState, rms: AudioLipSync.rmsSmoothed, jaw: LipSync.current.jaw, viseme: { ...LipSync.current } };
-    }
-};
-
-// Auto-init audio on interaction
-document.addEventListener('click', () => { initAudioAnalyser(); }, { once: true });
-document.addEventListener('touchstart', () => { initAudioAnalyser(); }, { once: true });
-
-// Monitor speechSynthesis
-if (window.speechSynthesis) {
-    const checkSpeaking = setInterval(() => {
-        if (window.speechSynthesis.speaking && speaking) {
-            const simulatedRMS = 0.15 + Math.random() * 0.25;
-            const simulatedBands = {
-                sub: 0.1 + Math.random() * 0.1, low: 0.2 + Math.random() * 0.3,
-                mid: 0.3 + Math.random() * 0.4, high: 0.1 + Math.random() * 0.2,
-                presence: 0.05 + Math.random() * 0.15, brilliance: 0.02 + Math.random() * 0.08,
-            };
-            AudioLipSync.rmsLevel = simulatedRMS;
-            AudioLipSync.bands = simulatedBands;
-            if (AudioLipSync.speechState !== 'speaking' && AudioLipSync.speechState !== 'anticipation') AudioLipSync.speechState = 'speaking';
-        } else if (!window.speechSynthesis.speaking && AudioLipSync.speechState === 'speaking') {
-            AudioLipSync.rmsLevel = 0;
-            AudioLipSync.bands = { sub: 0, low: 0, mid: 0, high: 0, presence: 0, brilliance: 0 };
-        }
-    }, 30);
-}
-})();
-</script>
-
-
-
-<!-- ==================== CAMERA, DETECTION, VOICE, WEBSOCKET + MEDIAPIPE ==================== -->
-<script type="module">
-// ==================== PERSON DETECTION SYSTEM ====================
-let detectionModel = null;
-let detectionRunning = false;
-let detectionFrameId = null;
-let personPresent = false;
-let conversationActive = false;
-let personStartTime = 0;
-let personLostTime = 0;
-let autoTriggerCooldown = false;
-let lastAutoTriggerTime = 0;
-let isAwaitingResponse = false;
-let lastUserTranscript = '';
-
-const PERSON_PRESENCE_DELAY = 1500;
-const PERSON_ABSENCE_DELAY = 4000;
-const DETECTION_CONFIDENCE = 0.5;
-const DETECTION_FRAME_SKIP = 3;
-let frameCounter = 0;
-
-const videoElement = document.getElementById('cameraFeed');
-const detectionCanvas = document.getElementById('detectionCanvas');
-const ctx = detectionCanvas.getContext('2d');
-const personIndicator = document.getElementById('personIndicator');
-const statusLed = document.getElementById('statusLed');
-const statusMsgSpan = document.getElementById('statusMsg');
-
-// ==================== MEDIAPIPE FACEMESH SETUP ====================
-let faceMesh = null;
-let faceMeshReady = false;
-
-async function initFaceMesh() {
-    try {
-        if (typeof FaceMesh === 'undefined') { console.log('MediaPipe FaceMesh not available, skipping'); return; }
-        faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
-        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
-        faceMesh.onResults(onFaceMeshResults);
-        faceMeshReady = true;
-        console.log('FaceMesh initialized');
-    } catch (e) { console.log('FaceMesh init failed:', e); }
-}
-
-function onFaceMeshResults(results) {
-    if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
-    const landmarks = results.multiFaceLandmarks[0];
-    const nose = landmarks[1]; const leftEye = landmarks[33]; const rightEye = landmarks[263];
-    const eyeMidX = (leftEye.x + rightEye.x) / 2; const eyeMidY = (leftEye.y + rightEye.y) / 2;
-    const yaw = (nose.x - eyeMidX) * 4; const pitch = (nose.y - eyeMidY) * 3;
-    const roll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
-    const upperLip = landmarks[13]; const lowerLip = landmarks[14];
-    const mouthOpen = Math.abs(lowerLip.y - upperLip.y) * 8;
-    const leftEyeTop = landmarks[159]; const leftEyeBot = landmarks[145];
-    const rightEyeTop = landmarks[386]; const rightEyeBot = landmarks[374];
-    const eyeOpenL = Math.abs(leftEyeTop.y - leftEyeBot.y) * 15;
-    const eyeOpenR = Math.abs(rightEyeTop.y - rightEyeBot.y) * 15;
-    const leftBrow = landmarks[66]; const rightBrow = landmarks[296];
-    const browL = (eyeMidY - leftBrow.y) * 10; const browR = (eyeMidY - rightBrow.y) * 10;
-    if (window.avatar2d && window.avatar2d.applyFaceTracking) {
-        window.avatar2d.applyFaceTracking({
-            headRotation: { yaw, pitch, roll },
-            mouthOpen: clamp(mouthOpen, 0, 1), eyeOpenL: clamp(eyeOpenL, 0, 1.3),
-            eyeOpenR: clamp(eyeOpenR, 0, 1.3), browL, browR
-        });
-    }
-}
-
-function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-
-let faceMeshFrameCount = 0;
-async function sendToFaceMesh() {
-    if (!faceMeshReady || !faceMesh || !videoElement || videoElement.readyState < 2) return;
-    faceMeshFrameCount++;
-    if (faceMeshFrameCount % 2 !== 0) return;
-    try { await faceMesh.send({ image: videoElement }); } catch(e) {}
-}
-
-
-// ==================== DETECTION MODEL ====================
-async function loadDetectionModel() {
-    try {
-        statusMsgSpan.innerHTML = 'LOADING AI MODEL...';
-        detectionModel = await cocoSsd.load({ base: 'mobilenet_v2' });
-        console.log('COCO-SSD loaded'); return true;
-    } catch (error) { console.error('Model load failed:', error); statusMsgSpan.innerHTML = 'MODEL ERROR'; return false; }
-}
-
-function drawDetections(predictions) {
-    if (!detectionCanvas || !ctx) return;
-    detectionCanvas.width = videoElement.videoWidth || 640;
-    detectionCanvas.height = videoElement.videoHeight || 480;
-    ctx.clearRect(0, 0, detectionCanvas.width, detectionCanvas.height);
-    for (let pred of predictions) {
-        if (pred.class === 'person' && pred.score >= DETECTION_CONFIDENCE) {
-            const [x, y, w, h] = pred.bbox;
-            ctx.strokeStyle = '#00ffaa'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
-            ctx.fillStyle = '#00ffaa'; ctx.font = '12px "Orbitron", monospace';
-            ctx.fillText(`PERSON ${Math.round(pred.score * 100)}%`, x, y - 5);
-            if (faceMeshReady) {
-                ctx.strokeStyle = '#ff88ff'; ctx.lineWidth = 1;
-                ctx.strokeRect(x + w*0.25, y + h*0.05, w*0.5, h*0.4);
-                ctx.fillStyle = '#ff88ff'; ctx.font = '10px "Orbitron", monospace';
-                ctx.fillText('FACEMESH', x + w*0.25, y + h*0.05 - 3);
-            }
-        }
-    }
-}
-
-async function detectPerson() {
-    if (!detectionModel || !videoElement || videoElement.readyState < 2) return false;
-    try {
-        const predictions = await detectionModel.detect(videoElement);
-        const personDetected = predictions.some(p => p.class === 'person' && p.score >= DETECTION_CONFIDENCE);
-        drawDetections(predictions);
-        if (personDetected) sendToFaceMesh();
-        return personDetected;
-    } catch (error) { return false; }
-}
-
-function sendAutoTriggerMessage() {
-    if (!webSocket || webSocket.readyState !== WebSocket.OPEN) return false;
-    if (isAwaitingResponse) return false;
-    const greetingText = "Hello, I'm here. Let's start our conversation.";
-    webSocket.send(JSON.stringify({ type: "user_input", text: greetingText }));
-    document.getElementById('userMsg').innerHTML = `"${greetingText}" (auto-detected)`;
-    statusMsgSpan.innerHTML = 'PROCESSING...';
-    isAwaitingResponse = true; return true;
-}
-
-function startConversation() {
-    if (conversationActive || autoTriggerCooldown) return;
-    const now = Date.now();
-    if (now - lastAutoTriggerTime < 5000) return;
-    conversationActive = true;
-    statusLed.classList.add('active');
-    personIndicator.className = 'person-indicator active';
-    personIndicator.innerHTML = 'CONVERSATION ACTIVE - VOICE READY';
-    statusMsgSpan.innerHTML = 'PERSON DETECTED - STARTING';
-    sendAutoTriggerMessage();
-    lastAutoTriggerTime = now;
-    addToConversationLog('System', 'Person detected - auto-starting conversation');
-    if (window.avatar2d) { window.avatar2d.setEmo('happy'); window.avatar2d.doWave(); }
-}
-
-function stopConversation() {
-    if (!conversationActive) return;
-    conversationActive = false; isAwaitingResponse = false;
-    statusLed.classList.remove('active');
-    statusMsgSpan.innerHTML = 'AWAITING PERSON';
-    personIndicator.className = 'person-indicator not-detected';
-    personIndicator.innerHTML = 'NO PERSON DETECTED';
-    stopAllAudio();
-    addToConversationLog('System', 'Conversation idle');
-    if (window.avatar2d) window.avatar2d.setEmo('neutral');
-}
-
-function detectionLoop() {
-    if (!detectionRunning) return;
-    frameCounter++;
-    if (frameCounter % DETECTION_FRAME_SKIP === 0) {
-        detectPerson().then(personDetected => {
-            const now = Date.now();
-            if (personDetected) {
-                personLostTime = null;
-                if (!personPresent) { personPresent = true; personStartTime = now;
-                    personIndicator.innerHTML = 'PERSON DETECTED - waiting 1.5s...';
-                    personIndicator.className = 'person-indicator detected';
-                    statusMsgSpan.innerHTML = 'PERSON DETECTED';
-                }
-                if (!conversationActive && !autoTriggerCooldown && (now - personStartTime) >= PERSON_PRESENCE_DELAY) {
-                    startConversation();
-                    autoTriggerCooldown = true;
-                    setTimeout(() => { autoTriggerCooldown = false; }, 8000);
-                }
-                if (!conversationActive && personPresent && (now - personStartTime) < PERSON_PRESENCE_DELAY) {
-                    const remaining = ((PERSON_PRESENCE_DELAY - (now - personStartTime)) / 1000).toFixed(1);
-                    personIndicator.innerHTML = `PERSON DETECTED - starting in ${remaining}s`;
-                    personIndicator.className = 'person-indicator detected';
-                } else if (conversationActive) {
-                    personIndicator.innerHTML = 'ACTIVE - VOICE INPUT/OUTPUT + FACEMESH';
-                    personIndicator.className = 'person-indicator active';
-                }
-            } else {
-                if (personPresent) { if (!personLostTime) personLostTime = now; personPresent = false; }
-                if (conversationActive && personLostTime && (now - personLostTime) >= PERSON_ABSENCE_DELAY) stopConversation();
-                else if (!conversationActive) {
-                    personIndicator.innerHTML = 'NO PERSON DETECTED - approach camera';
-                    personIndicator.className = 'person-indicator not-detected';
-                }
-            }
-        });
-    }
-    detectionFrameId = requestAnimationFrame(detectionLoop);
-}
-
-async function initDetection() {
-    const modelLoaded = await loadDetectionModel();
-    if (modelLoaded) {
-        const waitForVideo = setInterval(() => {
-            if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
-                clearInterval(waitForVideo);
-                detectionCanvas.width = videoElement.videoWidth;
-                detectionCanvas.height = videoElement.videoHeight;
-                detectionRunning = true; detectionLoop();
-                statusMsgSpan.innerHTML = 'AWAITING PERSON';
-            }
-        }, 200);
-    }
-}
-
-async function initCamera() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-        videoElement.srcObject = stream;
-        document.getElementById('cameraStatus').innerHTML = 'CAMERA ACTIVE - DETECTION + FACEMESH READY';
-        setTimeout(() => { initDetection(); initFaceMesh(); }, 500);
-    } catch (err) {
-        console.warn('Camera error:', err);
-        document.getElementById('cameraStatus').innerHTML = 'CAMERA UNAVAILABLE';
-    }
-}
-initCamera();
-
-
-// ========== AUDIO & WEBSOCKET ==========
-let audioCtx = null, webSocket = null, speechRec = null;
-let currentAudioSource = null; let typingInterval = null;
-
-function stopAllAudio() {
-    if (currentAudioSource) { try { currentAudioSource.stop(); } catch(e) {} currentAudioSource = null; }
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-    if (window.avatar2d) window.avatar2d.stopSpeak();
-    document.getElementById('volFill').style.width = '0%';
-    if (typingInterval) clearInterval(typingInterval);
-}
-
-function speakWithBrowserVoice(text) {
-    if (!window.speechSynthesis) return false;
-    stopAllAudio();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95; utterance.pitch = 1.05; utterance.volume = 1;
-    utterance.onstart = () => {
-        if (window.avatar2d) { window.avatar2d.startSpeak(text); window.avatar2d.setEmo('happy'); }
-        const volAnim = setInterval(() => {
-            if (!window.speechSynthesis.speaking) { clearInterval(volAnim); document.getElementById('volFill').style.width = '0%'; return; }
-            document.getElementById('volFill').style.width = (20 + Math.random() * 60) + '%';
-        }, 100);
-    };
-    utterance.onend = () => {
-        if (window.avatar2d) { window.avatar2d.stopSpeak(); window.avatar2d.setEmo('neutral'); }
-        document.getElementById('volFill').style.width = '0%';
-        isAwaitingResponse = false;
-    };
-    window.speechSynthesis.speak(utterance); return true;
-}
-
-async function playAudioResponse(b64, text) {
-    stopAllAudio(); speakWithBrowserVoice(text);
-    const aiDiv = document.getElementById('aiMsg');
-    if (typingInterval) clearInterval(typingInterval);
-    aiDiv.innerHTML = ''; let charIdx = 0;
-    typingInterval = setInterval(() => {
-        if (charIdx < text.length) { aiDiv.innerHTML = text.slice(0, charIdx + 1) + '<span class="cursor-blink"></span>'; charIdx++; }
-        else { clearInterval(typingInterval); aiDiv.innerHTML = text + '<span class="cursor-blink"></span>'; }
-    }, 40);
-}
-
-function addToConversationLog(userText, botText) {
-    const logDiv = document.getElementById('chatLog');
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const entry = document.createElement('div'); entry.className = 'chat-entry';
-    entry.innerHTML = `<span class="chat-user-label">${userText}:</span><span class="chat-time">${timestamp}</span><div class="chat-text">${botText}</div>`;
-    logDiv.appendChild(entry); logDiv.scrollTop = logDiv.scrollHeight;
-}
-
-function initWS() {
-    webSocket = new WebSocket('ws://localhost:8765');
-    webSocket.onopen = () => { console.log('WebSocket connected'); addToConversationLog('System', 'WebSocket connected to AI backend'); };
-    webSocket.onclose = () => { console.log('WebSocket disconnected'); };
-    webSocket.onerror = () => { console.log('WebSocket error - offline mode'); };
-    webSocket.onmessage = async (e) => {
-        try {
-            const data = JSON.parse(e.data);
-            if (data.type === 'response') {
-                const emo = detectEmotionFromText(data.text);
-                if (window.avatar2d) window.avatar2d.setEmo(emo);
-                await playAudioResponse(data.audio_b64 || null, data.text);
-                addToConversationLog('BotX', data.text);
-                isAwaitingResponse = false;
-            }
-        } catch (err) { console.error('WS parse:', err); isAwaitingResponse = false; }
-    };
-}
-
-function detectEmotionFromText(text) {
-    const lower = text.toLowerCase();
-    if (/\b(happy|glad|great|wonderful|awesome|excited|love|thank)\b/.test(lower)) return 'happy';
-    if (/\b(sorry|sad|unfortunately|regret|miss)\b/.test(lower)) return 'sad';
-    if (/\b(wow|amazing|incredible|surprising|unbelievable)\b/.test(lower)) return 'surprised';
-    if (/\b(think|consider|perhaps|maybe|hmm|well)\b/.test(lower)) return 'thinking';
-    if (/\b(sure|absolutely|definitely|confident|certain)\b/.test(lower)) return 'confident';
-    if (/\b(love|heart|adore|beautiful)\b/.test(lower)) return 'love';
-    if (/\b(angry|frustrated|annoyed|upset)\b/.test(lower)) return 'angry';
-    return 'neutral';
-}
-initWS();
-
-
-// ========== VOICE COMMAND SYSTEM ==========
-let recognitionActive = false;
-
-function initSpeechRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) { document.getElementById('voiceIndicator').innerHTML = 'NOT SUPPORTED'; return false; }
-    if (speechRec) { try { speechRec.stop(); } catch(e) {} }
-    speechRec = new SpeechRecognition();
-    speechRec.continuous = true; speechRec.interimResults = false; speechRec.lang = 'en-US';
-
-    speechRec.onstart = () => {
-        recognitionActive = true;
-        document.getElementById('voiceIndicator').innerHTML = 'LISTENING...';
-        document.getElementById('voiceIndicator').style.background = '#00ffaa22';
-        document.getElementById('voiceIndicator').style.borderColor = '#00ffaa';
-    };
-    speechRec.onend = () => {
-        recognitionActive = false;
-        document.getElementById('voiceIndicator').innerHTML = 'VOICE READY';
-        document.getElementById('voiceIndicator').style.background = '#ff00aa22';
-        document.getElementById('voiceIndicator').style.borderColor = '#ff00aa';
-        setTimeout(() => { if (!recognitionActive && document.visibilityState === 'visible') { try { speechRec.start(); } catch(e) {} } }, 1000);
-    };
-    speechRec.onerror = (event) => {
-        console.log('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') document.getElementById('voiceIndicator').innerHTML = 'MIC DENIED';
-    };
-    speechRec.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-        if (!transcript) return;
-        console.log('Heard:', transcript);
-
-        if (transcript === 'stop' || transcript.includes('stop')) {
-            stopAllAudio();
-            if (conversationActive) {
-                conversationActive = false; isAwaitingResponse = false;
-                statusLed.classList.remove('active');
-                personIndicator.className = 'person-indicator not-detected';
-                personIndicator.innerHTML = 'NO PERSON DETECTED';
-                statusMsgSpan.innerHTML = 'STOPPED';
-                addToConversationLog('COMMAND', '"STOP" - Conversation halted');
-            } else { addToConversationLog('COMMAND', '"STOP" - Audio halted'); }
-            document.getElementById('userMsg').innerHTML = `COMMAND: "${transcript}"`;
-            if (window.avatar2d) window.avatar2d.setEmo('neutral');
-            return;
-        }
-
-        if (transcript === 'end' || transcript.includes('end') || transcript === 'terminate') {
-            stopAllAudio();
-            if (speechRec) try { speechRec.stop(); } catch(e) {}
-            if (detectionRunning) detectionRunning = false;
-            if (detectionFrameId) cancelAnimationFrame(detectionFrameId);
-            if (videoElement && videoElement.srcObject) videoElement.srcObject.getTracks().forEach(track => track.stop());
-            addToConversationLog('COMMAND', '"END" - Terminating');
-            statusMsgSpan.innerHTML = 'TERMINATING...';
-            setTimeout(() => {
-                document.body.innerHTML = '<div style="background:#000;color:#0ff;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;"><h1>TERMINATED</h1><p>Command "END" executed.</p><button onclick="location.reload()" style="margin-top:20px;background:#00c8ff;border:none;padding:8px 20px;color:#000;border-radius:4px;cursor:pointer;">RESTART</button></div>';
-            }, 200);
-            return;
-        }
-
-        if (transcript === 'restart' || transcript.includes('restart') || transcript === 'reboot') {
-            stopAllAudio(); addToConversationLog('COMMAND', '"RESTART" - Rebooting...');
-            statusMsgSpan.innerHTML = 'RESTARTING...';
-            setTimeout(() => { window.location.reload(); }, 500); return;
-        }
-
-        if (!conversationActive) return;
-        if (window.speechSynthesis && window.speechSynthesis.speaking) return;
-        if (isAwaitingResponse) return;
-
-        if (transcript.length > 0 && transcript !== lastUserTranscript) {
-            lastUserTranscript = transcript;
-            document.getElementById('userMsg').innerHTML = `"${transcript}" (voice)`;
-            if (window.avatar2d) window.avatar2d.setEmo('thinking');
-            if (webSocket && webSocket.readyState === WebSocket.OPEN) {
-                webSocket.send(JSON.stringify({ type: 'user_input', text: transcript }));
-                isAwaitingResponse = true; statusMsgSpan.innerHTML = 'PROCESSING...';
-            } else {
-                const fallbackResponse = `You said: "${transcript}". I'm in offline mode but my avatar is fully functional!`;
-                playAudioResponse(null, fallbackResponse);
-                addToConversationLog('You', transcript);
-                addToConversationLog('BotX', fallbackResponse);
-            }
-            addToConversationLog('You', transcript);
-        }
-    };
-    try { speechRec.start(); return true; } catch(e) { return false; }
-}
-
-document.getElementById('micRestartBtn').addEventListener('click', () => {
-    addToConversationLog('System', 'Re-initializing microphone...');
-    if (speechRec) { try { speechRec.stop(); } catch(e) {} }
-    setTimeout(() => { initSpeechRecognition(); }, 500);
-});
-
-setTimeout(() => {
-    initSpeechRecognition();
-    addToConversationLog('System', 'Voice recognition active. Commands: STOP, END, RESTART');
-}, 3000);
-
-document.body.addEventListener('click', () => {
-    if (!recognitionActive && speechRec) { try { speechRec.start(); } catch(e) {} }
-}, { once: true });
-
-// ========== LOADING SCREEN ===========
-document.getElementById('modelLoadStatus').innerHTML = 'Ultra Realistic Avatar Loaded | FACS + Audio-Driven Lip Sync Active';
-document.getElementById('loadFill').style.width = '100%';
-document.getElementById('loadPercent').innerHTML = '100%';
-setTimeout(() => {
-    document.getElementById('loading-screen').style.opacity = '0';
-    setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 800);
-}, 800);
-
-// ========== MICRO EXPRESSION AUTO-PILOT ===========
-setInterval(() => {
-    if (!window.avatar2d || conversationActive) return;
-    const microEmotions = ['neutral', 'thinking', 'neutral', 'confident', 'neutral'];
-    const randEmo = microEmotions[Math.floor(Math.random() * microEmotions.length)];
-    window.avatar2d.setEmo(randEmo);
-}, 8000);
-
-setInterval(() => {
-    if (!window.avatar2d) return;
-    window.avatar2d.setGaze((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 1.5);
-}, 3000);
-
-setInterval(() => {
-    if (!window.avatar2d || conversationActive) return;
-    if (Math.random() < 0.3) window.avatar2d.triggerGesture('nod');
-    if (Math.random() < 0.15) window.avatar2d.triggerGesture('head_shake');
-}, 12000);
-</script>
+<!-- Status indicator -->
+<div class="status-pill" id="statusIndicator">
+    <div class="status-dot"></div>
+    <span>Ready</span>
+</div>
+
+<!-- Hidden camera for detection -->
+<div class="hidden-camera">
+    <video id="cameraFeed" autoplay playsinline muted></video>
+</div>
+
+<!-- Subtitle -->
+<div class="subtitle-area">
+    <div id="subtitle"></div>
+</div>
+
+
+<!-- Bottom controls -->
+<div class="controls-bar">
+    <div class="waveform">
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+    </div>
+    <button class="mic-btn" id="micBtn" title="Voice Input">
+        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+    </button>
+    <div class="waveform">
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+        <div class="waveform-bar"></div><div class="waveform-bar"></div>
+    </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
 </body>
 </html>
