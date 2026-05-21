@@ -49,9 +49,14 @@ class AvatarApp {
         this.detection.onPersonLost = () => this.onPersonLost();
         this.detection.onFaceData = (data) => this.applyFaceTracking(data);
 
-        // Initialize systems
-        this.ai.initWebSocket();
+        // Initialize AI (no WebSocket needed - uses Krutrim REST API)
         setTimeout(() => this.ai.initSpeechRecognition(), 2000);
+
+        // Preload voices for TTS
+        if (window.speechSynthesis) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+        }
 
         // Camera + detection
         const video = document.getElementById('cameraFeed');
@@ -68,6 +73,23 @@ class AvatarApp {
 
         // Audio init on interaction
         document.addEventListener('click', () => this.audio.init(), { once: true });
+
+        // Mic button - start conversation manually
+        const micBtn = document.getElementById('micBtn');
+        if (micBtn) {
+            micBtn.addEventListener('click', () => {
+                this.audio.init();
+                if (!this.ai.conversationActive) {
+                    this.ai.conversationActive = true;
+                    this.updateIndicator(true);
+                    this.updateStatusText('Listening...');
+                    // Start speech rec if not already running
+                    if (!this.ai.recognitionActive) {
+                        this.ai.initSpeechRecognition();
+                    }
+                }
+            });
+        }
 
         // Start render loop
         requestAnimationFrame((t) => this.loop(t));
@@ -170,18 +192,24 @@ class AvatarApp {
 
     handleAIResponse(text, emotion, audio) {
         this.setEmotion(emotion);
+        this.updateStatusText('Speaking...');
         this.ai.speak(text,
             () => this.startSpeak(text),
-            () => { this.stopSpeak(); this.setEmotion('neutral'); }
+            () => {
+                this.stopSpeak();
+                this.setEmotion('neutral');
+                this.updateStatusText(this.ai.conversationActive ? 'Listening...' : 'Ready');
+            }
         );
-        this.addToLog('AI', text);
+        this.addToLog('Nova', text);
         this.typeText(text);
     }
 
     handleUserInput(text) {
         this.setEmotion('thinking');
+        this.body.triggerGesture('nod');
         this.addToLog('You', text);
-        this.updateStatus('status', 'Processing...');
+        this.updateStatusText('Thinking...');
     }
 
     handleCommand(cmd) {
@@ -191,10 +219,14 @@ class AvatarApp {
                 this.stopSpeak();
                 this.ai.stopConversation();
                 this.setEmotion('neutral');
-                this.updateStatus('status', 'Stopped');
+                this.updateStatusText('Stopped');
+                this.updateIndicator(false);
                 break;
             case 'end':
+                this.ai.stopSpeaking();
+                this.stopSpeak();
                 this.destroy();
+                document.body.innerHTML = '<div style="background:#0a0a0f;color:#fff;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;"><h2 style="font-weight:400;opacity:0.8;">Session Ended</h2><button onclick="location.reload()" style="margin-top:20px;background:rgba(139,92,246,0.8);border:none;padding:10px 24px;color:#fff;border-radius:12px;cursor:pointer;font-family:Inter,sans-serif;">Restart</button></div>';
                 break;
             case 'restart':
                 window.location.reload();
@@ -207,7 +239,7 @@ class AvatarApp {
         this.ai.startConversation();
         this.setEmotion('happy');
         this.body.triggerGesture('wave');
-        this.updateStatus('status', 'Person detected');
+        this.updateStatusText('Person detected');
         this.updateIndicator(true);
     }
 
@@ -215,7 +247,7 @@ class AvatarApp {
         this.ai.stopConversation();
         this.stopSpeak();
         this.setEmotion('neutral');
-        this.updateStatus('status', 'Waiting...');
+        this.updateStatusText('Waiting...');
         this.updateIndicator(false);
     }
 
@@ -243,6 +275,14 @@ class AvatarApp {
         });
     }
 
+    updateStatusText(text) {
+        const pill = document.getElementById('statusIndicator');
+        if (pill) {
+            const span = pill.querySelector('span');
+            if (span) span.textContent = text;
+        }
+    }
+
     updateSubtitle(text) {
         const el = document.getElementById('subtitle');
         if (el) el.textContent = text;
@@ -256,14 +296,29 @@ class AvatarApp {
         const interval = setInterval(() => {
             if (i < text.length) { el.textContent = text.slice(0, i+1); i++; }
             else clearInterval(interval);
-        }, 35);
+        }, 30);
     }
 
     updateStatus(type, data) {
         const indicator = document.getElementById('statusIndicator');
+        const micBtn = document.getElementById('micBtn');
         if (indicator) {
-            if (data === 'listening') indicator.classList.add('active');
-            else if (data === 'voice_ready') indicator.classList.remove('active');
+            if (data === 'listening') {
+                indicator.classList.add('active');
+                this.updateStatusText('Listening...');
+                if (micBtn) micBtn.classList.add('active');
+            } else if (data === 'voice_ready') {
+                this.updateStatusText(this.ai.conversationActive ? 'Ready' : 'Tap mic to talk');
+                if (micBtn) micBtn.classList.remove('active');
+            } else if (data === 'active') {
+                indicator.classList.add('active');
+                this.updateStatusText('Active');
+            } else if (data === 'idle') {
+                indicator.classList.remove('active');
+                this.updateStatusText('Ready');
+            } else if (data === 'mic_denied') {
+                this.updateStatusText('Mic denied');
+            }
         }
     }
 
