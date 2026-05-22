@@ -7,7 +7,7 @@
 export class AISystem {
     constructor() {
         // API Configuration - Krutrim Cloud (OpenAI-compatible)
-        this.apiKey = 'ksk_ffO3wJTlnvSurNZQn58ydahgKWK2ebwH';
+        this.apiKey = 'ksk_inlBAAscY3ll7WT4j89mAgO61hysVwCO';
         this.apiBase = 'https://cloud.olakrutrim.com/v1/chat/completions';
         this.model = 'Meta-Llama-3.1-8B-Instruct';
         // Fallback models to try if primary fails
@@ -268,22 +268,56 @@ Rules:
         window.speechSynthesis.cancel();
 
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.95;
+        utterance.rate = 0.92;
         utterance.pitch = 1.05;
         utterance.volume = 1;
 
         // Try to use a good voice
         const voices = window.speechSynthesis.getVoices();
         const preferred = voices.find(v =>
-            v.name.includes('Google') && v.lang.startsWith('en') ||
+            (v.name.includes('Google') && v.lang.startsWith('en')) ||
             v.name.includes('Samantha') ||
-            v.name.includes('Microsoft Zira')
+            v.name.includes('Microsoft Zira') ||
+            v.name.includes('Microsoft Mark')
         );
         if (preferred) utterance.voice = preferred;
 
-        utterance.onstart = () => { if (onStart) onStart(); };
-        utterance.onend = () => { if (onEnd) onEnd(); };
-        utterance.onerror = () => { if (onEnd) onEnd(); };
+        // Feed simulated audio data during speech for lip sync
+        let lipSyncInterval = null;
+        utterance.onstart = () => {
+            if (onStart) onStart();
+            // Simulate audio energy for lip sync while TTS is speaking
+            lipSyncInterval = setInterval(() => {
+                if (window.speechSynthesis.speaking) {
+                    // Generate realistic speech-like audio simulation
+                    const baseRMS = 0.2 + Math.random() * 0.3;
+                    const variation = Math.sin(Date.now() * 0.01) * 0.1;
+                    window._avatarLipSyncRMS = baseRMS + variation;
+                    window._avatarLipSyncBands = {
+                        sub: 0.08 + Math.random() * 0.12,
+                        low: 0.2 + Math.random() * 0.35,
+                        mid: 0.35 + Math.random() * 0.4,
+                        high: 0.1 + Math.random() * 0.25,
+                        presence: 0.05 + Math.random() * 0.18,
+                        brilliance: 0.02 + Math.random() * 0.1,
+                    };
+                }
+            }, 30);
+        };
+
+        utterance.onend = () => {
+            if (lipSyncInterval) clearInterval(lipSyncInterval);
+            window._avatarLipSyncRMS = 0;
+            window._avatarLipSyncBands = null;
+            if (onEnd) onEnd();
+        };
+
+        utterance.onerror = () => {
+            if (lipSyncInterval) clearInterval(lipSyncInterval);
+            window._avatarLipSyncRMS = 0;
+            window._avatarLipSyncBands = null;
+            if (onEnd) onEnd();
+        };
 
         window.speechSynthesis.speak(utterance);
         return true;

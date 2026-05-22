@@ -143,12 +143,18 @@ class AvatarApp {
             });
         }
 
-        // Monitor speechSynthesis for simulated audio
+        // Monitor speechSynthesis for simulated audio - DRIVES LIP SYNC
         if (window.speechSynthesis && window.speechSynthesis.speaking && this.speaking) {
-            this.audio.feedAudioData(
-                0.15 + Math.random() * 0.25,
-                { sub: 0.1+Math.random()*0.1, low: 0.2+Math.random()*0.3, mid: 0.3+Math.random()*0.4, high: 0.1+Math.random()*0.2, presence: 0.05+Math.random()*0.15, brilliance: 0.02+Math.random()*0.08 }
-            );
+            const rms = window._avatarLipSyncRMS || (0.15 + Math.random() * 0.25);
+            const bands = window._avatarLipSyncBands || {
+                sub: 0.1+Math.random()*0.1, low: 0.2+Math.random()*0.3,
+                mid: 0.3+Math.random()*0.4, high: 0.1+Math.random()*0.2,
+                presence: 0.05+Math.random()*0.15, brilliance: 0.02+Math.random()*0.08
+            };
+            this.audio.feedAudioData(rms, bands);
+        } else if (!window.speechSynthesis?.speaking && this.audio.isActive) {
+            // Stop feeding when speech ends
+            this.audio.feedAudioData(0, { sub:0, low:0, mid:0, high:0, presence:0, brilliance:0 });
         }
 
         // Update waveform UI
