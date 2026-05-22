@@ -6,8 +6,9 @@
 
 export class AISystem {
     constructor() {
-        // API Configuration - AWS Bedrock via local proxy server
-        this.apiBase = 'http://localhost:3001/chat';
+        // API Configuration - Krutrim Cloud (works directly from browser)
+        this.apiKey = 'ksk_inlBAAscY3ll7WT4j89mAgO61hysVwCO';
+        this.apiBase = 'http://localhost:3001/chat'; // Try backend first
         this.model = 'meta.llama3-70b-instruct-v1:0';
 
         // Conversation history (for context)
@@ -45,80 +46,100 @@ Rules:
     }
 
     /**
-     * Send message to AWS Bedrock via proxy server
+     * Send message - tries backend first, then Krutrim API directly
      */
     async sendMessage(text) {
         if (this.isAwaitingResponse) {
-            // FIX: If stuck for more than 10s, force reset
-            console.warn('[AI] sendMessage called while awaiting - force resetting');
+            console.warn('[AI] Force-clearing stuck state');
             this.isAwaitingResponse = false;
         }
         this.isAwaitingResponse = true;
 
-        // Add user message to local history for context display
         this.messages.push({ role: 'user', content: text });
-
-        // Trim local history
         if (this.messages.length > this.maxHistory + 1) {
             this.messages = [this.messages[0], ...this.messages.slice(-this.maxHistory)];
         }
 
-        // FIX: Safety timeout - always clear isAwaitingResponse after 20s
+        // Safety timeout
         const safetyTimeout = setTimeout(() => {
             if (this.isAwaitingResponse) {
-                console.warn('[AI] Request timeout after 20s - forcing recovery');
+                console.warn('[AI] 15s timeout - forcing recovery');
                 this.isAwaitingResponse = false;
-                const fallback = "Sorry, that took too long. Could you ask me again?";
-                this.messages.push({ role: 'assistant', content: fallback });
-                if (this.onResponse) this.onResponse(fallback, 'thinking', null);
+                if (this.onResponse) this.onResponse("Sorry, that took too long. Please ask again.", 'thinking', null);
             }
-        }, 20000);
+        }, 15000);
 
+        // METHOD 1: Try local backend (node server.js)
         try {
-            const response = await fetch(this.apiBase, {
+            const resp = await fetch('http://localhost:3001/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text })
             });
-
-            clearTimeout(safetyTimeout);
-
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                throw new Error(errData.error || `HTTP ${response.status}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.text) {
+                    clearTimeout(safetyTimeout);
+                    this.messages.push({ role: 'assistant', content: data.text });
+                    const emotion = this.detectEmotion(data.text);
+                    if (this.onResponse) this.onResponse(data.text, emotion, null);
+                    this.isAwaitingResponse = false;
+                    console.log('[AI] Backend response OK');
+                    return true;
+                }
             }
-
-            const data = await response.json();
-            const aiText = data.text;
-
-            if (!aiText) throw new Error('Empty response from Bedrock');
-
-            console.log('[AI] Bedrock response received successfully');
-
-            // Add to local history
-            this.messages.push({ role: 'assistant', content: aiText });
-
-            // Detect emotion and trigger callback
-            const emotion = this.detectEmotion(aiText);
-            if (this.onResponse) this.onResponse(aiText, emotion, null);
-
-            this.isAwaitingResponse = false;
-            return true;
-
-        } catch (err) {
-            clearTimeout(safetyTimeout);
-            console.error('[AI] Bedrock Error:', err.message);
-            this.isAwaitingResponse = false;
-
-            // Use offline fallback
-            const fallback = this.getOfflineResponse(text);
-            this.messages.push({ role: 'assistant', content: fallback });
-            const emotion = this.detectEmotion(fallback);
-            if (this.onResponse) this.onResponse(fallback, emotion, null);
-            if (this.onError) this.onError(err.message);
-
-            return false;
+        } catch(e) {
+            console.log('[AI] Backend not available, trying Krutrim...');
         }
+
+        // METHOD 2: Try Krutrim API directly
+        const krutrimEndpoints = [
+            { url: 'https://cloud.olakrutrim.com/v1/chat/completions', model: 'Meta-Llama-3.1-8B-Instruct' },
+            { url: 'https://cloud.olakrutrim.com/v1/chat/completions', model: 'Krutrim-spectre-v2' },
+            { url: 'https://api.olakrutrim.com/v1/chat/completions', model: 'Meta-Llama-3-8B-Instruct' },
+        ];
+
+        for (const ep of krutrimEndpoints) {
+            try {
+                const resp = await fetch(ep.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: ep.model,
+                        messages: this.messages,
+                        max_tokens: 512,
+                        temperature: 0.7
+                    })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const aiText = data.choices?.[0]?.message?.content?.trim();
+                    if (aiText) {
+                        clearTimeout(safetyTimeout);
+                        this.messages.push({ role: 'assistant', content: aiText });
+                        const emotion = this.detectEmotion(aiText);
+                        if (this.onResponse) this.onResponse(aiText, emotion, null);
+                        this.isAwaitingResponse = false;
+                        console.log('[AI] Krutrim response OK:', ep.model);
+                        return true;
+                    }
+                }
+            } catch(e) {
+                console.warn('[AI] Krutrim failed:', ep.model, e.message);
+            }
+        }
+
+        // ALL FAILED - offline fallback
+        clearTimeout(safetyTimeout);
+        this.isAwaitingResponse = false;
+        const fallback = this.getOfflineResponse(text);
+        this.messages.push({ role: 'assistant', content: fallback });
+        const emotion = this.detectEmotion(fallback);
+        if (this.onResponse) this.onResponse(fallback, emotion, null);
+        return false;
     }
 
     /**
