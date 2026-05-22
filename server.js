@@ -8,8 +8,15 @@
 const { BedrockRuntimeClient, ConverseCommand } = require('@aws-sdk/client-bedrock-runtime');
 const http = require('http');
 
-// AWS Bedrock Client - uses your AWS credentials from environment or ~/.aws/credentials
-const client = new BedrockRuntimeClient({ region: 'us-east-1' });
+// AWS Bedrock Client - configure credentials here or use aws configure
+const client = new BedrockRuntimeClient({ 
+    region: 'us-east-1',
+    // If aws configure is not set, you can pass credentials directly:
+    // credentials: {
+    //     accessKeyId: 'YOUR_ACCESS_KEY_HERE',
+    //     secretAccessKey: 'YOUR_SECRET_KEY_HERE'
+    // }
+});
 
 const MODEL_ID = 'meta.llama3-70b-instruct-v1:0';
 const PORT = 3001;
@@ -106,11 +113,15 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`\n  AWS Bedrock Proxy Server running on http://localhost:${PORT}`);
-    console.log(`  Model: ${MODEL_ID}`);
+    console.log(`\n  ========================================`);
+    console.log(`  AWS Bedrock Proxy Server RUNNING!`);
+    console.log(`  ========================================`);
+    console.log(`  URL:    http://localhost:${PORT}`);
+    console.log(`  Model:  ${MODEL_ID}`);
     console.log(`  Region: us-east-1`);
-    console.log(`\n  Make sure AWS credentials are configured:`);
-    console.log(`    - Environment: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY`);
-    console.log(`    - Or: ~/.aws/credentials file`);
-    console.log(`\n  Frontend connects automatically.\n`);
+    console.log(`  ----------------------------------------`);
+    console.log(`  NOW open another terminal and run:`);
+    console.log(`    python -m http.server 8080`);
+    console.log(`  Then open: http://localhost:8080`);
+    console.log(`  ========================================\n`);
 });
