@@ -6,19 +6,32 @@
 
 export class AISystem {
     constructor() {
-        // API Configuration
+        // API Configuration - Krutrim Cloud (OpenAI-compatible)
         this.apiKey = 'ksk_ffO3wJTlnvSurNZQn58ydahgKWK2ebwH';
-        this.apiBase = 'https://api.olakrutrim.com/v1/chat/completions';
-        this.model = 'Krutrim-spectre-v2';
+        this.apiBase = 'https://cloud.olakrutrim.com/v1/chat/completions';
+        this.model = 'Meta-Llama-3.1-8B-Instruct';
+        // Fallback models to try if primary fails
+        this.fallbackModels = ['Meta-Llama-3-8B-Instruct', 'Krutrim-spectre-v2', 'mistralai/Mistral-7B-Instruct-v0.2'];
+        this.currentModelIdx = 0;
 
         // Conversation history (for context)
         this.messages = [
             {
                 role: 'system',
-                content: `You are a friendly, intelligent AI assistant named Nova. You speak naturally and conversationally, like a real human companion. Keep responses concise (1-3 sentences) unless asked for detail. Be warm, helpful, and occasionally witty. Show emotional intelligence - respond with empathy when appropriate. You can discuss any topic. Never mention that you are an AI unless directly asked.`
+                content: `You are Nova, a warm and intelligent AI assistant. You answer ALL questions accurately and helpfully. You have knowledge about everything - science, technology, history, coding, math, current events, personal advice, etc. 
+
+Rules:
+- Always give direct, accurate answers
+- Keep responses concise (2-4 sentences) unless the user asks for detail
+- Be conversational and friendly, like talking to a smart friend
+- If you don't know something, say so honestly
+- Show emotion in responses - be excited about cool topics, empathetic about sad ones
+- You can help with: coding, math, science, history, advice, creative writing, planning, and anything else
+- Never refuse to answer a reasonable question
+- Respond in the same language the user speaks (English, Hindi, etc.)`
             }
         ];
-        this.maxHistory = 20; // Keep last 20 messages for context
+        this.maxHistory = 30; // Keep last 30 messages for rich context
 
         // Speech recognition
         this.speechRec = null;
@@ -50,54 +63,80 @@ export class AISystem {
             this.messages = [this.messages[0], ...this.messages.slice(-this.maxHistory)];
         }
 
-        try {
-            const response = await fetch(this.apiBase, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`
-                },
-                body: JSON.stringify({
-                    model: this.model,
-                    messages: this.messages,
-                    max_tokens: 256,
-                    temperature: 0.8,
-                    top_p: 0.9
-                })
-            });
+        // Try multiple API endpoints/models
+        const endpoints = [
+            { url: 'https://cloud.olakrutrim.com/v1/chat/completions', model: 'Meta-Llama-3.1-8B-Instruct' },
+            { url: 'https://api.olakrutrim.com/v1/chat/completions', model: 'Meta-Llama-3-8B-Instruct' },
+            { url: 'https://cloud.olakrutrim.com/v1/chat/completions', model: 'Krutrim-spectre-v2' },
+            { url: 'https://api.olakrutrim.com/v1/chat/completions', model: 'Krutrim-spectre-v2' },
+        ];
 
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`API Error ${response.status}: ${errText}`);
+        let lastError = '';
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(endpoint.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: endpoint.model,
+                        messages: this.messages,
+                        max_tokens: 512,
+                        temperature: 0.7,
+                        top_p: 0.9
+                    })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    lastError = `${endpoint.model}: ${response.status} - ${errText.slice(0, 100)}`;
+                    console.warn(`[AI] ${lastError}`);
+                    continue; // Try next endpoint
+                }
+
+                const data = await response.json();
+                const aiText = data.choices?.[0]?.message?.content?.trim();
+
+                if (!aiText) {
+                    lastError = `${endpoint.model}: Empty response`;
+                    continue;
+                }
+
+                // Success! Save the working model
+                this.apiBase = endpoint.url;
+                this.model = endpoint.model;
+                console.log(`[AI] Using model: ${endpoint.model}`);
+
+                // Add assistant response to history
+                this.messages.push({ role: 'assistant', content: aiText });
+
+                // Detect emotion and trigger callback
+                const emotion = this.detectEmotion(aiText);
+                if (this.onResponse) this.onResponse(aiText, emotion, null);
+
+                this.isAwaitingResponse = false;
+                return true;
+
+            } catch (err) {
+                lastError = `${endpoint.model}: ${err.message}`;
+                console.warn(`[AI] Fetch error:`, lastError);
+                continue;
             }
-
-            const data = await response.json();
-            const aiText = data.choices?.[0]?.message?.content?.trim();
-
-            if (!aiText) throw new Error('Empty response from API');
-
-            // Add assistant response to history
-            this.messages.push({ role: 'assistant', content: aiText });
-
-            // Detect emotion and trigger callback
-            const emotion = this.detectEmotion(aiText);
-            if (this.onResponse) this.onResponse(aiText, emotion, null);
-
-            this.isAwaitingResponse = false;
-            return true;
-
-        } catch (err) {
-            console.error('[AI] API Error:', err.message);
-            this.isAwaitingResponse = false;
-
-            // Fallback response
-            const fallback = this.getOfflineResponse(text);
-            const emotion = this.detectEmotion(fallback);
-            if (this.onResponse) this.onResponse(fallback, emotion, null);
-            if (this.onError) this.onError(err.message);
-
-            return false;
         }
+
+        // ALL endpoints failed - use intelligent offline fallback
+        console.error('[AI] All API attempts failed. Last error:', lastError);
+        this.isAwaitingResponse = false;
+
+        const fallback = this.getOfflineResponse(text);
+        this.messages.push({ role: 'assistant', content: fallback });
+        const emotion = this.detectEmotion(fallback);
+        if (this.onResponse) this.onResponse(fallback, emotion, null);
+        if (this.onError) this.onError(lastError);
+
+        return false;
     }
 
     /**
@@ -105,19 +144,45 @@ export class AISystem {
      */
     getOfflineResponse(userText) {
         const lower = userText.toLowerCase();
-        if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
-            return "Hey there! I'm having a bit of trouble connecting right now, but I'm still here for you. How can I help?";
+        
+        // Greetings
+        if (/^(hello|hi|hey|good morning|good evening|good afternoon|namaste)/i.test(lower)) {
+            return "Hello! Great to see you. I'm Nova, your AI assistant. I'm currently in offline mode but I can still chat. What's on your mind?";
         }
         if (lower.includes('how are you')) {
-            return "I'm doing well, thanks for asking! My connection is a bit spotty, but my spirit is high!";
+            return "I'm doing well, thank you! I'm running in offline mode right now, but I'm still happy to chat with you.";
         }
-        if (lower.includes('name')) {
-            return "I'm Nova, your AI assistant. Nice to meet you!";
+        // Name
+        if (lower.includes('your name') || lower.includes('who are you')) {
+            return "I'm Nova, an AI assistant built by Code Origin AI. I use Krutrim's language model for conversations, but I seem to be offline right now. I'll be back to full power soon!";
         }
-        if (lower.includes('joke')) {
-            return "Why don't scientists trust atoms? Because they make up everything! I'll be funnier once my connection is back.";
+        // Time/meeting related
+        if (lower.includes('meeting') || lower.includes('schedule') || lower.includes('today')) {
+            return "I'd love to help with your schedule! Unfortunately I'm in offline mode right now and can't access real-time data. Once my API connection is restored, I can help you plan and prepare for meetings.";
         }
-        return `I heard you say "${userText}". I'm in offline mode right now, but I'll be fully connected soon!`;
+        // Coding/tech
+        if (lower.includes('code') || lower.includes('programming') || lower.includes('javascript') || lower.includes('python')) {
+            return "I'd be happy to help with coding! I'm offline right now, but once connected I can write code, debug issues, explain concepts, and help with any programming language.";
+        }
+        // Jokes
+        if (lower.includes('joke') || lower.includes('funny')) {
+            const jokes = [
+                "Why do programmers prefer dark mode? Because light attracts bugs!",
+                "What's an AI's favorite food? Chips... neural network chips!",
+                "Why did the developer quit? Because he didn't get arrays! (a raise)",
+                "I told my computer I needed a break. Now it won't stop sending me Kit-Kat ads."
+            ];
+            return jokes[Math.floor(Math.random() * jokes.length)];
+        }
+        // Math
+        if (/\d+\s*[\+\-\*\/]\s*\d+/.test(userText)) {
+            try {
+                const result = eval(userText.replace(/[^0-9\+\-\*\/\.\(\)]/g, ''));
+                if (!isNaN(result)) return `The answer is ${result}. I can do basic math even offline!`;
+            } catch(e) {}
+        }
+        // Default - acknowledge and explain
+        return `I heard you ask: "${userText}". I'm currently offline and can't connect to my AI brain (Krutrim API). Please check your internet connection or try again in a moment. Once connected, I can answer any question!`;
     }
 
     /**
@@ -261,7 +326,7 @@ export class AISystem {
     startConversation() {
         this.conversationActive = true;
         this.emit('status', 'active');
-        this.sendMessage("Hello! I just appeared. Give me a warm, brief greeting.");
+        this.sendMessage("Hello! I just appeared in front of you. Give me a warm, brief greeting and ask how you can help.");
     }
 
     /**

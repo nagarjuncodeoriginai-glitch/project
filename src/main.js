@@ -83,13 +83,19 @@ class AvatarApp {
                     this.ai.conversationActive = true;
                     this.updateIndicator(true);
                     this.updateStatusText('Listening...');
-                    // Start speech rec if not already running
                     if (!this.ai.recognitionActive) {
                         this.ai.initSpeechRecognition();
                     }
                 }
             });
         }
+
+        // AUTO-START conversation immediately (no waiting for camera)
+        setTimeout(() => {
+            this.ai.conversationActive = true;
+            this.updateIndicator(true);
+            this.updateStatusText('Ready - speak or click mic');
+        }, 1500);
 
         // Start render loop
         requestAnimationFrame((t) => this.loop(t));
