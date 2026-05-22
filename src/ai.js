@@ -48,7 +48,11 @@ Rules:
      * Send message to AWS Bedrock via proxy server
      */
     async sendMessage(text) {
-        if (this.isAwaitingResponse) return false;
+        if (this.isAwaitingResponse) {
+            // FIX: If stuck for more than 10s, force reset
+            console.warn('[AI] sendMessage called while awaiting - force resetting');
+            this.isAwaitingResponse = false;
+        }
         this.isAwaitingResponse = true;
 
         // Add user message to local history for context display
@@ -59,12 +63,25 @@ Rules:
             this.messages = [this.messages[0], ...this.messages.slice(-this.maxHistory)];
         }
 
+        // FIX: Safety timeout - always clear isAwaitingResponse after 20s
+        const safetyTimeout = setTimeout(() => {
+            if (this.isAwaitingResponse) {
+                console.warn('[AI] Request timeout after 20s - forcing recovery');
+                this.isAwaitingResponse = false;
+                const fallback = "Sorry, that took too long. Could you ask me again?";
+                this.messages.push({ role: 'assistant', content: fallback });
+                if (this.onResponse) this.onResponse(fallback, 'thinking', null);
+            }
+        }, 20000);
+
         try {
             const response = await fetch(this.apiBase, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text })
             });
+
+            clearTimeout(safetyTimeout);
 
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -89,6 +106,7 @@ Rules:
             return true;
 
         } catch (err) {
+            clearTimeout(safetyTimeout);
             console.error('[AI] Bedrock Error:', err.message);
             this.isAwaitingResponse = false;
 
@@ -170,12 +188,18 @@ Rules:
         this.speechRec.onend = () => {
             this.recognitionActive = false;
             this.emit('status', 'voice_ready');
-            // Auto-restart
-            setTimeout(() => {
+            // FIX: Aggressive auto-restart - keep trying every 500ms
+            const tryRestart = () => {
                 if (!this.recognitionActive && document.visibilityState === 'visible') {
-                    try { this.speechRec.start(); } catch(e) {}
+                    try { 
+                        this.speechRec.start(); 
+                    } catch(e) {
+                        // Still failed - try again in 1s
+                        setTimeout(tryRestart, 1000);
+                    }
                 }
-            }, 1000);
+            };
+            setTimeout(tryRestart, 500);
         };
 
         this.speechRec.onerror = (event) => {
@@ -212,23 +236,49 @@ Rules:
             return;
         }
 
-        // Normal conversation
-        if (!this.conversationActive) return;
-        if (this.isAwaitingResponse) return;
-        if (window.speechSynthesis && window.speechSynthesis.speaking) return;
+        // Normal conversation - FIX: force reset stuck state
+        if (!this.conversationActive) {
+            this.conversationActive = true; // Auto-reactivate
+        }
 
-        if (transcript.length > 0 && lower !== this.lastUserTranscript) {
-            this.lastUserTranscript = lower;
+        // FIX: Force-clear stuck awaiting state after 15 seconds
+        if (this.isAwaitingResponse) {
+            console.warn('[AI] Force-clearing stuck isAwaitingResponse');
+            this.isAwaitingResponse = false;
+        }
+
+        // FIX: Stop any ongoing speech to accept new input
+        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            // Small delay to let cancel propagate
+            setTimeout(() => {
+                this._processInput(transcript);
+            }, 100);
+            return;
+        }
+
+        this._processInput(transcript);
+    }
+
+    _processInput(transcript) {
+        if (transcript.length > 0) {
+            // FIX: Remove lastUserTranscript check - allow same question again
+            this.lastUserTranscript = transcript.toLowerCase();
             if (this.onUserInput) this.onUserInput(transcript);
             this.sendMessage(transcript);
         }
     }
 
     /**
-     * Speak text using browser TTS
+     * Speak text using browser TTS - with safety timeout
      */
     speak(text, onStart, onEnd) {
-        if (!window.speechSynthesis) return false;
+        if (!window.speechSynthesis) {
+            // No TTS available - just trigger callbacks immediately
+            if (onStart) onStart();
+            setTimeout(() => { if (onEnd) onEnd(); }, 1000);
+            return true;
+        }
         window.speechSynthesis.cancel();
 
         const utterance = new SpeechSynthesisUtterance(text);
@@ -246,14 +296,33 @@ Rules:
         );
         if (preferred) utterance.voice = preferred;
 
+        // FIX: Safety timeout - if TTS hangs, force end after text length * 80ms
+        const maxDuration = Math.max(5000, text.length * 80);
+        let safetyTimer = null;
+        let ended = false;
+
+        const doEnd = () => {
+            if (ended) return;
+            ended = true;
+            if (safetyTimer) clearTimeout(safetyTimer);
+            if (lipSyncInterval) clearInterval(lipSyncInterval);
+            window._avatarLipSyncRMS = 0;
+            window._avatarLipSyncBands = null;
+            if (onEnd) onEnd();
+        };
+
+        safetyTimer = setTimeout(() => {
+            console.warn('[AI] TTS safety timeout - forcing end');
+            window.speechSynthesis.cancel();
+            doEnd();
+        }, maxDuration);
+
         // Feed simulated audio data during speech for lip sync
         let lipSyncInterval = null;
         utterance.onstart = () => {
             if (onStart) onStart();
-            // Simulate audio energy for lip sync while TTS is speaking
             lipSyncInterval = setInterval(() => {
-                if (window.speechSynthesis.speaking) {
-                    // Generate realistic speech-like audio simulation
+                if (window.speechSynthesis.speaking && !ended) {
                     const baseRMS = 0.2 + Math.random() * 0.3;
                     const variation = Math.sin(Date.now() * 0.01) * 0.1;
                     window._avatarLipSyncRMS = baseRMS + variation;
@@ -265,25 +334,27 @@ Rules:
                         presence: 0.05 + Math.random() * 0.18,
                         brilliance: 0.02 + Math.random() * 0.1,
                     };
+                } else {
+                    doEnd();
                 }
             }, 30);
         };
 
-        utterance.onend = () => {
-            if (lipSyncInterval) clearInterval(lipSyncInterval);
-            window._avatarLipSyncRMS = 0;
-            window._avatarLipSyncBands = null;
-            if (onEnd) onEnd();
-        };
+        utterance.onend = () => doEnd();
+        utterance.onerror = () => doEnd();
 
-        utterance.onerror = () => {
-            if (lipSyncInterval) clearInterval(lipSyncInterval);
-            window._avatarLipSyncRMS = 0;
-            window._avatarLipSyncBands = null;
-            if (onEnd) onEnd();
-        };
-
+        // FIX: Chrome bug - speechSynthesis.speak sometimes silently fails
+        // Retry once if it doesn't start within 500ms
         window.speechSynthesis.speak(utterance);
+
+        setTimeout(() => {
+            if (!ended && !window.speechSynthesis.speaking) {
+                console.warn('[AI] TTS failed to start - retrying');
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(utterance);
+            }
+        }, 500);
+
         return true;
     }
 
