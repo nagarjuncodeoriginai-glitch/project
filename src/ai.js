@@ -6,13 +6,9 @@
 
 export class AISystem {
     constructor() {
-        // API Configuration - Krutrim Cloud (OpenAI-compatible)
-        this.apiKey = 'ksk_inlBAAscY3ll7WT4j89mAgO61hysVwCO';
-        this.apiBase = 'https://cloud.olakrutrim.com/v1/chat/completions';
-        this.model = 'Meta-Llama-3.1-8B-Instruct';
-        // Fallback models to try if primary fails
-        this.fallbackModels = ['Meta-Llama-3-8B-Instruct', 'Krutrim-spectre-v2', 'mistralai/Mistral-7B-Instruct-v0.2'];
-        this.currentModelIdx = 0;
+        // API Configuration - AWS Bedrock via local proxy server
+        this.apiBase = 'http://localhost:3001/chat';
+        this.model = 'meta.llama3-70b-instruct-v1:0';
 
         // Conversation history (for context)
         this.messages = [
@@ -49,94 +45,62 @@ Rules:
     }
 
     /**
-     * Send message to Krutrim AI API and get response
+     * Send message to AWS Bedrock via proxy server
      */
     async sendMessage(text) {
         if (this.isAwaitingResponse) return false;
         this.isAwaitingResponse = true;
 
-        // Add user message to history
+        // Add user message to local history for context display
         this.messages.push({ role: 'user', content: text });
 
-        // Trim history if too long
+        // Trim local history
         if (this.messages.length > this.maxHistory + 1) {
             this.messages = [this.messages[0], ...this.messages.slice(-this.maxHistory)];
         }
 
-        // Try multiple API endpoints/models
-        const endpoints = [
-            { url: 'https://cloud.olakrutrim.com/v1/chat/completions', model: 'Meta-Llama-3.1-8B-Instruct' },
-            { url: 'https://api.olakrutrim.com/v1/chat/completions', model: 'Meta-Llama-3-8B-Instruct' },
-            { url: 'https://cloud.olakrutrim.com/v1/chat/completions', model: 'Krutrim-spectre-v2' },
-            { url: 'https://api.olakrutrim.com/v1/chat/completions', model: 'Krutrim-spectre-v2' },
-        ];
+        try {
+            const response = await fetch(this.apiBase, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
 
-        let lastError = '';
-        for (const endpoint of endpoints) {
-            try {
-                const response = await fetch(endpoint.url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: endpoint.model,
-                        messages: this.messages,
-                        max_tokens: 512,
-                        temperature: 0.7,
-                        top_p: 0.9
-                    })
-                });
-
-                if (!response.ok) {
-                    const errText = await response.text();
-                    lastError = `${endpoint.model}: ${response.status} - ${errText.slice(0, 100)}`;
-                    console.warn(`[AI] ${lastError}`);
-                    continue; // Try next endpoint
-                }
-
-                const data = await response.json();
-                const aiText = data.choices?.[0]?.message?.content?.trim();
-
-                if (!aiText) {
-                    lastError = `${endpoint.model}: Empty response`;
-                    continue;
-                }
-
-                // Success! Save the working model
-                this.apiBase = endpoint.url;
-                this.model = endpoint.model;
-                console.log(`[AI] Using model: ${endpoint.model}`);
-
-                // Add assistant response to history
-                this.messages.push({ role: 'assistant', content: aiText });
-
-                // Detect emotion and trigger callback
-                const emotion = this.detectEmotion(aiText);
-                if (this.onResponse) this.onResponse(aiText, emotion, null);
-
-                this.isAwaitingResponse = false;
-                return true;
-
-            } catch (err) {
-                lastError = `${endpoint.model}: ${err.message}`;
-                console.warn(`[AI] Fetch error:`, lastError);
-                continue;
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(errData.error || `HTTP ${response.status}`);
             }
+
+            const data = await response.json();
+            const aiText = data.text;
+
+            if (!aiText) throw new Error('Empty response from Bedrock');
+
+            console.log('[AI] Bedrock response received successfully');
+
+            // Add to local history
+            this.messages.push({ role: 'assistant', content: aiText });
+
+            // Detect emotion and trigger callback
+            const emotion = this.detectEmotion(aiText);
+            if (this.onResponse) this.onResponse(aiText, emotion, null);
+
+            this.isAwaitingResponse = false;
+            return true;
+
+        } catch (err) {
+            console.error('[AI] Bedrock Error:', err.message);
+            this.isAwaitingResponse = false;
+
+            // Use offline fallback
+            const fallback = this.getOfflineResponse(text);
+            this.messages.push({ role: 'assistant', content: fallback });
+            const emotion = this.detectEmotion(fallback);
+            if (this.onResponse) this.onResponse(fallback, emotion, null);
+            if (this.onError) this.onError(err.message);
+
+            return false;
         }
-
-        // ALL endpoints failed - use intelligent offline fallback
-        console.error('[AI] All API attempts failed. Last error:', lastError);
-        this.isAwaitingResponse = false;
-
-        const fallback = this.getOfflineResponse(text);
-        this.messages.push({ role: 'assistant', content: fallback });
-        const emotion = this.detectEmotion(fallback);
-        if (this.onResponse) this.onResponse(fallback, emotion, null);
-        if (this.onError) this.onError(lastError);
-
-        return false;
     }
 
     /**
